@@ -1,0 +1,9 @@
+# Licensed raw data and intermediate tables are never published
+比赛/data/raw
+比赛/data/interim
+比赛/data/processed
+
+.venv-credit/
+**/__pycache__/
+*.pyc
+.DS_Store

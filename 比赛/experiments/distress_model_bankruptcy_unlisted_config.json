@@ -1,0 +1,45 @@
+{
+  "target": "bankruptcy",
+  "horizon_days": 365,
+  "maturity_days": 30,
+  "validation_start": "2019-01-01",
+  "test_start": "2021-01-01",
+  "seeds": [
+    17,
+    29,
+    43
+  ],
+  "folds": 5,
+  "control_seed": 20261009,
+  "clip_quantiles": [
+    0.01,
+    0.99
+  ],
+  "review_k": 100,
+  "bootstrap_draws": 500,
+  "lightgbm": {
+    "n_estimators": 300,
+    "num_leaves": 15,
+    "learning_rate": 0.03,
+    "min_child_samples": 50,
+    "subsample": 0.8,
+    "subsample_freq": 1,
+    "colsample_bytree": 0.8,
+    "reg_lambda": 1.0
+  },
+  "gnn_models": [
+    "mlp",
+    "gnn_mean",
+    "gnn_maxmean",
+    "gnn_maxmean_rewired"
+  ],
+  "hidden": 32,
+  "learning_rate": 0.005,
+  "weight_decay": 0.0001,
+  "epochs": 250,
+  "patience": 40,
+  "output": "distress_bankruptcy_unlisted_results.json",
+  "frozen_before_test": "2026-10-09; hyperparameters fixed a priori, selection by validation AP only",
+  "own_info": "unlisted",
+  "scenario": "Unlisted business client: own financial + event information only; listed counterparties contribute full-information risk"
+}

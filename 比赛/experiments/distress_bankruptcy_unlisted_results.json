@@ -1,0 +1,1193 @@
+{
+  "created_at": "2026-10-09T19:08:50.864507+00:00",
+  "config": {
+    "target": "bankruptcy",
+    "horizon_days": 365,
+    "maturity_days": 30,
+    "validation_start": "2019-01-01",
+    "test_start": "2021-01-01",
+    "seeds": [
+      17,
+      29,
+      43
+    ],
+    "folds": 5,
+    "control_seed": 20261009,
+    "clip_quantiles": [
+      0.01,
+      0.99
+    ],
+    "review_k": 100,
+    "bootstrap_draws": 500,
+    "lightgbm": {
+      "n_estimators": 300,
+      "num_leaves": 15,
+      "learning_rate": 0.03,
+      "min_child_samples": 50,
+      "subsample": 0.8,
+      "subsample_freq": 1,
+      "colsample_bytree": 0.8,
+      "reg_lambda": 1.0
+    },
+    "gnn_models": [
+      "mlp",
+      "gnn_mean",
+      "gnn_maxmean",
+      "gnn_maxmean_rewired"
+    ],
+    "hidden": 32,
+    "learning_rate": 0.005,
+    "weight_decay": 0.0001,
+    "epochs": 250,
+    "patience": 40,
+    "output": "distress_bankruptcy_unlisted_results.json",
+    "frozen_before_test": "2026-10-09; hyperparameters fixed a priori, selection by validation AP only",
+    "own_info": "unlisted",
+    "scenario": "Unlisted business client: own financial + event information only; listed counterparties contribute full-information risk"
+  },
+  "runs": {
+    "gbdt_own_financial": {
+      "validation": {
+        "n": 31125,
+        "positives": 201,
+        "prevalence": 0.006457831325301205,
+        "ap": 0.06817374614582868,
+        "roc_auc": 0.8771116606850626,
+        "brier": 0.00621822067156913,
+        "log_loss": 0.032014733001348245,
+        "ece10": 0.0024410438931484,
+        "k": 100,
+        "recall_at_k": 0.06467661691542288,
+        "precision_at_k": 0.13,
+        "ks": 0.6321492073972397,
+        "capture_top5pct": 0.472636815920398
+      },
+      "test": {
+        "n": 91103,
+        "positives": 467,
+        "prevalence": 0.005126066101006553,
+        "ap": 0.028318660994285347,
+        "roc_auc": 0.8488561748700807,
+        "brier": 0.005291196735444461,
+        "log_loss": 0.02891711787219085,
+        "ece10": 0.0018186261964754525,
+        "k": 100,
+        "recall_at_k": 0.0021413276231263384,
+        "precision_at_k": 0.01,
+        "ks": 0.5518496320978197,
+        "capture_top5pct": 0.3361884368308351
+      }
+    },
+    "gbdt_own_financial_market": {
+      "validation": {
+        "n": 31125,
+        "positives": 201,
+        "prevalence": 0.006457831325301205,
+        "ap": 0.19635870734752248,
+        "roc_auc": 0.9371992707526912,
+        "brier": 0.005696910293149438,
+        "log_loss": 0.02647946219970599,
+        "ece10": 0.001684168285494334,
+        "k": 100,
+        "recall_at_k": 0.1791044776119403,
+        "precision_at_k": 0.36,
+        "ks": 0.7179840996801016,
+        "capture_top5pct": 0.6467661691542289
+      },
+      "test": {
+        "n": 91103,
+        "positives": 467,
+        "prevalence": 0.005126066101006553,
+        "ap": 0.13588665942509712,
+        "roc_auc": 0.9329823116264385,
+        "brier": 0.004785152097788482,
+        "log_loss": 0.022438811617730016,
+        "ece10": 0.0007150568822671874,
+        "k": 100,
+        "recall_at_k": 0.07494646680942184,
+        "precision_at_k": 0.35,
+        "ks": 0.7347847988891821,
+        "capture_top5pct": 0.6552462526766595
+      }
+    },
+    "gbdt_own_full": {
+      "validation": {
+        "n": 31125,
+        "positives": 201,
+        "prevalence": 0.006457831325301205,
+        "ap": 0.1892063324198478,
+        "roc_auc": 0.943964693413028,
+        "brier": 0.005782359623227354,
+        "log_loss": 0.026246209458151343,
+        "ece10": 0.0019014093197226153,
+        "k": 100,
+        "recall_at_k": 0.1791044776119403,
+        "precision_at_k": 0.36,
+        "ks": 0.746636433664043,
+        "capture_top5pct": 0.6766169154228856
+      },
+      "test": {
+        "n": 91103,
+        "positives": 467,
+        "prevalence": 0.005126066101006553,
+        "ap": 0.1584108492496634,
+        "roc_auc": 0.9387834062087823,
+        "brier": 0.004722492122636296,
+        "log_loss": 0.021939991750195963,
+        "ece10": 0.0010594067408700666,
+        "k": 100,
+        "recall_at_k": 0.08993576017130621,
+        "precision_at_k": 0.42,
+        "ks": 0.755259360145715,
+        "capture_top5pct": 0.6638115631691649
+      }
+    },
+    "gbdt_own_unlisted": {
+      "validation": {
+        "n": 31125,
+        "positives": 201,
+        "prevalence": 0.006457831325301205,
+        "ap": 0.07360853313210053,
+        "roc_auc": 0.8886256854390574,
+        "brier": 0.006249257975022653,
+        "log_loss": 0.03180062068153577,
+        "ece10": 0.0027419042229191687,
+        "k": 100,
+        "recall_at_k": 0.03482587064676617,
+        "precision_at_k": 0.07,
+        "ks": 0.647370443089172,
+        "capture_top5pct": 0.5124378109452736
+      },
+      "test": {
+        "n": 91103,
+        "positives": 467,
+        "prevalence": 0.005126066101006553,
+        "ap": 0.038934140454680057,
+        "roc_auc": 0.8692916594254279,
+        "brier": 0.005218145345560435,
+        "log_loss": 0.0278338805240229,
+        "ece10": 0.0017815453297186155,
+        "k": 100,
+        "recall_at_k": 0.02569593147751606,
+        "precision_at_k": 0.12,
+        "ks": 0.6052565912283154,
+        "capture_top5pct": 0.38329764453961457
+      }
+    },
+    "two_stage_no_contagion": {
+      "validation": {
+        "n": 31125,
+        "positives": 201,
+        "prevalence": 0.006457831325301205,
+        "ap": 0.06957006079040035,
+        "roc_auc": 0.8861774589734035,
+        "brier": 0.006223712767317797,
+        "log_loss": 0.03172758150246277,
+        "ece10": 0.002531568715796098,
+        "k": 100,
+        "recall_at_k": 0.07960199004975124,
+        "precision_at_k": 0.16,
+        "ks": 0.6434267351639166,
+        "capture_top5pct": 0.4626865671641791
+      },
+      "test": {
+        "n": 91103,
+        "positives": 467,
+        "prevalence": 0.005126066101006553,
+        "ap": 0.03638917037949765,
+        "roc_auc": 0.8718210843704252,
+        "brier": 0.00515923976693619,
+        "log_loss": 0.02749881777345833,
+        "ece10": 0.0013896330821673057,
+        "k": 100,
+        "recall_at_k": 0.017130620985010708,
+        "precision_at_k": 0.08,
+        "ks": 0.6148844147089807,
+        "capture_top5pct": 0.3618843683083512
+      }
+    },
+    "two_stage_contagion": {
+      "validation": {
+        "n": 31125,
+        "positives": 201,
+        "prevalence": 0.006457831325301205,
+        "ap": 0.10257982801231626,
+        "roc_auc": 0.9155784587603955,
+        "brier": 0.00610432970727527,
+        "log_loss": 0.02899676385583809,
+        "ece10": 0.001369595324591182,
+        "k": 100,
+        "recall_at_k": 0.08955223880597014,
+        "precision_at_k": 0.18,
+        "ks": 0.6853957801215111,
+        "capture_top5pct": 0.527363184079602
+      },
+      "test": {
+        "n": 91103,
+        "positives": 467,
+        "prevalence": 0.005126066101006553,
+        "ap": 0.03760714420646312,
+        "roc_auc": 0.8868938114507114,
+        "brier": 0.005298962534893062,
+        "log_loss": 0.027149562131709676,
+        "ece10": 0.0015737428120251298,
+        "k": 100,
+        "recall_at_k": 0.010706638115631691,
+        "precision_at_k": 0.05,
+        "ks": 0.6316514617190554,
+        "capture_top5pct": 0.39828693790149894
+      }
+    },
+    "two_stage_random_neighbours": {
+      "validation": {
+        "n": 31125,
+        "positives": 201,
+        "prevalence": 0.006457831325301205,
+        "ap": 0.08013440188489582,
+        "roc_auc": 0.8945521068824807,
+        "brier": 0.006201446728446977,
+        "log_loss": 0.031043725358675753,
+        "ece10": 0.002245469508752506,
+        "k": 100,
+        "recall_at_k": 0.07462686567164178,
+        "precision_at_k": 0.15,
+        "ks": 0.6488463773488011,
+        "capture_top5pct": 0.4626865671641791
+      },
+      "test": {
+        "n": 91103,
+        "positives": 467,
+        "prevalence": 0.005126066101006553,
+        "ap": 0.03379409049864288,
+        "roc_auc": 0.8790014636516276,
+        "brier": 0.005260178628356621,
+        "log_loss": 0.027502393448963217,
+        "ece10": 0.0015508728691178027,
+        "k": 100,
+        "recall_at_k": 0.010706638115631691,
+        "precision_at_k": 0.05,
+        "ks": 0.6275724116788588,
+        "capture_top5pct": 0.3490364025695932
+      }
+    },
+    "two_stage_supply_only": {
+      "validation": {
+        "n": 31125,
+        "positives": 201,
+        "prevalence": 0.006457831325301205,
+        "ap": 0.06501722655501342,
+        "roc_auc": 0.8825847157949741,
+        "brier": 0.006245194435447762,
+        "log_loss": 0.0320310407819067,
+        "ece10": 0.0025558339310805572,
+        "k": 100,
+        "recall_at_k": 0.07462686567164178,
+        "precision_at_k": 0.15,
+        "ks": 0.627524967324804,
+        "capture_top5pct": 0.4527363184079602
+      },
+      "test": {
+        "n": 91103,
+        "positives": 467,
+        "prevalence": 0.005126066101006553,
+        "ap": 0.0341690773218154,
+        "roc_auc": 0.868235891538954,
+        "brier": 0.00517894716985924,
+        "log_loss": 0.027790756053414464,
+        "ece10": 0.0015416438154323526,
+        "k": 100,
+        "recall_at_k": 0.027837259100642397,
+        "precision_at_k": 0.13,
+        "ks": 0.5972426780326474,
+        "capture_top5pct": 0.3426124197002141
+      }
+    },
+    "two_stage_people_only": {
+      "validation": {
+        "n": 31125,
+        "positives": 201,
+        "prevalence": 0.006457831325301205,
+        "ap": 0.07094438934873172,
+        "roc_auc": 0.8933734026800417,
+        "brier": 0.006231165417389919,
+        "log_loss": 0.031429117432002475,
+        "ece10": 0.0025166398400438862,
+        "k": 100,
+        "recall_at_k": 0.06467661691542288,
+        "precision_at_k": 0.13,
+        "ks": 0.6491181075607604,
+        "capture_top5pct": 0.4577114427860697
+      },
+      "test": {
+        "n": 91103,
+        "positives": 467,
+        "prevalence": 0.005126066101006553,
+        "ap": 0.03658773320625992,
+        "roc_auc": 0.8813775468015554,
+        "brier": 0.005217292491808859,
+        "log_loss": 0.02726846023066158,
+        "ece10": 0.0012390992586072552,
+        "k": 100,
+        "recall_at_k": 0.004282655246252677,
+        "precision_at_k": 0.02,
+        "ks": 0.6356129981487944,
+        "capture_top5pct": 0.3683083511777302
+      }
+    },
+    "two_stage_investor_only": {
+      "validation": {
+        "n": 31125,
+        "positives": 201,
+        "prevalence": 0.006457831325301205,
+        "ap": 0.08347874508560132,
+        "roc_auc": 0.8969311539572864,
+        "brier": 0.006187767469406757,
+        "log_loss": 0.03086675664597186,
+        "ece10": 0.002403624627473181,
+        "k": 100,
+        "recall_at_k": 0.07462686567164178,
+        "precision_at_k": 0.15,
+        "ks": 0.657747351716389,
+        "capture_top5pct": 0.5223880597014925
+      },
+      "test": {
+        "n": 91103,
+        "positives": 467,
+        "prevalence": 0.005126066101006553,
+        "ap": 0.037363390095402425,
+        "roc_auc": 0.8764206648936146,
+        "brier": 0.005207129189456725,
+        "log_loss": 0.02747438159753139,
+        "ece10": 0.0015572479872918623,
+        "k": 100,
+        "recall_at_k": 0.008565310492505354,
+        "precision_at_k": 0.04,
+        "ks": 0.6256020859681756,
+        "capture_top5pct": 0.37044967880085655
+      }
+    },
+    "two_stage_diffusion_only": {
+      "validation": {
+        "n": 31125,
+        "positives": 201,
+        "prevalence": 0.006457831325301205,
+        "ap": 0.10544253112460811,
+        "roc_auc": 0.9152549244464523,
+        "brier": 0.006078887030482924,
+        "log_loss": 0.028970976833063024,
+        "ece10": 0.001290260815232236,
+        "k": 100,
+        "recall_at_k": 0.1044776119402985,
+        "precision_at_k": 0.21,
+        "ks": 0.7095585325217143,
+        "capture_top5pct": 0.5472636815920398
+      },
+      "test": {
+        "n": 91103,
+        "positives": 467,
+        "prevalence": 0.005126066101006553,
+        "ap": 0.04082717777894431,
+        "roc_auc": 0.8813679548180722,
+        "brier": 0.005263509524103986,
+        "log_loss": 0.02724949009054242,
+        "ece10": 0.0016969302955865116,
+        "k": 100,
+        "recall_at_k": 0.021413276231263382,
+        "precision_at_k": 0.1,
+        "ks": 0.6245082690930321,
+        "capture_top5pct": 0.3618843683083512
+      }
+    },
+    "two_stage_customer_dependence_only": {
+      "validation": {
+        "n": 31125,
+        "positives": 201,
+        "prevalence": 0.006457831325301205,
+        "ap": 0.05969941079931922,
+        "roc_auc": 0.8828884615854886,
+        "brier": 0.0062621668969411815,
+        "log_loss": 0.03204317992701366,
+        "ece10": 0.0027098648345484752,
+        "k": 100,
+        "recall_at_k": 0.05472636815920398,
+        "precision_at_k": 0.11,
+        "ks": 0.6332163397216479,
+        "capture_top5pct": 0.472636815920398
+      },
+      "test": {
+        "n": 91103,
+        "positives": 467,
+        "prevalence": 0.005126066101006553,
+        "ap": 0.03416601313386082,
+        "roc_auc": 0.8697542954366824,
+        "brier": 0.005180205377033398,
+        "log_loss": 0.027693023202483822,
+        "ece10": 0.0014286861725853444,
+        "k": 100,
+        "recall_at_k": 0.019271948608137045,
+        "precision_at_k": 0.09,
+        "ks": 0.6077890874980734,
+        "capture_top5pct": 0.3511777301927195
+      }
+    },
+    "mlp": {
+      "validation": {
+        "n": 31125,
+        "positives": 201,
+        "prevalence": 0.006457831325301205,
+        "ap": 0.05889420027450089,
+        "roc_auc": 0.8539061579954321,
+        "brier": 0.013315398560994118,
+        "log_loss": 0.0650703445765301,
+        "ece10": 0.040234287214349726,
+        "k": 100,
+        "recall_at_k": 0.05970149253731343,
+        "precision_at_k": 0.12,
+        "ks": 0.5575469567181555,
+        "capture_top5pct": 0.30845771144278605
+      },
+      "test": {
+        "n": 91103,
+        "positives": 467,
+        "prevalence": 0.005126066101006553,
+        "ap": 0.04005104400192226,
+        "roc_auc": 0.8512340299381397,
+        "brier": 0.012772157527279898,
+        "log_loss": 0.06378805847810796,
+        "ece10": 0.042587807828722804,
+        "k": 100,
+        "recall_at_k": 0.032119914346895075,
+        "precision_at_k": 0.15,
+        "ks": 0.5654268248370568,
+        "capture_top5pct": 0.39828693790149894
+      },
+      "seed_runs": [
+        {
+          "best_epoch": 147,
+          "validation_ap": 0.06051785088055189,
+          "gates": [
+            [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ]
+          ]
+        },
+        {
+          "best_epoch": 96,
+          "validation_ap": 0.05275026748510491,
+          "gates": [
+            [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ]
+          ]
+        },
+        {
+          "best_epoch": 101,
+          "validation_ap": 0.04855870135268676,
+          "gates": [
+            [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ],
+            [
+              0.5,
+              0.5,
+              0.5,
+              0.5
+            ]
+          ]
+        }
+      ]
+    },
+    "gnn_mean": {
+      "validation": {
+        "n": 31125,
+        "positives": 201,
+        "prevalence": 0.006457831325301205,
+        "ap": 0.06491054633152003,
+        "roc_auc": 0.868102734291291,
+        "brier": 0.015514885384632283,
+        "log_loss": 0.06973086230677489,
+        "ece10": 0.04435539727382263,
+        "k": 100,
+        "recall_at_k": 0.05970149253731343,
+        "precision_at_k": 0.12,
+        "ks": 0.6036566295414661,
+        "capture_top5pct": 0.38308457711442784
+      },
+      "test": {
+        "n": 91103,
+        "positives": 467,
+        "prevalence": 0.005126066101006553,
+        "ap": 0.04534918723566958,
+        "roc_auc": 0.8940283571162548,
+        "brier": 0.014010192302104124,
+        "log_loss": 0.06446154302914814,
+        "ece10": 0.04398847293013206,
+        "k": 100,
+        "recall_at_k": 0.017130620985010708,
+        "precision_at_k": 0.08,
+        "ks": 0.6523102552100771,
+        "capture_top5pct": 0.4539614561027837
+      },
+      "seed_runs": [
+        {
+          "best_epoch": 89,
+          "validation_ap": 0.0674215290880433,
+          "gates": [
+            [
+              0.5130000114440918,
+              0.5049999952316284,
+              0.503000020980835,
+              0.4970000088214874
+            ],
+            [
+              0.5070000290870667,
+              0.4950000047683716,
+              0.4950000047683716,
+              0.48899999260902405
+            ]
+          ]
+        },
+        {
+          "best_epoch": 121,
+          "validation_ap": 0.050547210082296505,
+          "gates": [
+            [
+              0.5289999842643738,
+              0.5049999952316284,
+              0.5059999823570251,
+              0.4970000088214874
+            ],
+            [
+              0.5130000114440918,
+              0.49799999594688416,
+              0.49399998784065247,
+              0.4880000054836273
+            ]
+          ]
+        },
+        {
+          "best_epoch": 77,
+          "validation_ap": 0.05048386283709247,
+          "gates": [
+            [
+              0.5059999823570251,
+              0.4970000088214874,
+              0.503000020980835,
+              0.492000013589859
+            ],
+            [
+              0.5120000243186951,
+              0.4869999885559082,
+              0.49799999594688416,
+              0.49300000071525574
+            ]
+          ]
+        }
+      ]
+    },
+    "gnn_maxmean": {
+      "validation": {
+        "n": 31125,
+        "positives": 201,
+        "prevalence": 0.006457831325301205,
+        "ap": 0.09491298316483276,
+        "roc_auc": 0.8967711565056622,
+        "brier": 0.013924439101211399,
+        "log_loss": 0.06507321705148761,
+        "ece10": 0.04215319629426047,
+        "k": 100,
+        "recall_at_k": 0.0845771144278607,
+        "precision_at_k": 0.17,
+        "ks": 0.6666029572741646,
+        "capture_top5pct": 0.5174129353233831
+      },
+      "test": {
+        "n": 91103,
+        "positives": 467,
+        "prevalence": 0.005126066101006553,
+        "ap": 0.08718031921776037,
+        "roc_auc": 0.916832541829317,
+        "brier": 0.012040266849175845,
+        "log_loss": 0.05832718432443746,
+        "ece10": 0.04018798104150819,
+        "k": 100,
+        "recall_at_k": 0.03854389721627409,
+        "precision_at_k": 0.18,
+        "ks": 0.6908743050418962,
+        "capture_top5pct": 0.5974304068522484
+      },
+      "seed_runs": [
+        {
+          "best_epoch": 76,
+          "validation_ap": 0.08317215488440553,
+          "gates": [
+            [
+              0.5070000290870667,
+              0.5230000019073486,
+              0.5019999742507935,
+              0.4950000047683716
+            ],
+            [
+              0.5260000228881836,
+              0.5,
+              0.5070000290870667,
+              0.4959999918937683
+            ]
+          ]
+        },
+        {
+          "best_epoch": 92,
+          "validation_ap": 0.1249647316734668,
+          "gates": [
+            [
+              0.5099999904632568,
+              0.5049999952316284,
+              0.49900001287460327,
+              0.4880000054836273
+            ],
+            [
+              0.5170000195503235,
+              0.503000020980835,
+              0.5009999871253967,
+              0.49399998784065247
+            ]
+          ]
+        },
+        {
+          "best_epoch": 73,
+          "validation_ap": 0.06582654701696893,
+          "gates": [
+            [
+              0.503000020980835,
+              0.5220000147819519,
+              0.5,
+              0.49300000071525574
+            ],
+            [
+              0.5249999761581421,
+              0.4970000088214874,
+              0.49900001287460327,
+              0.492000013589859
+            ]
+          ]
+        }
+      ]
+    },
+    "gnn_maxmean_rewired": {
+      "validation": {
+        "n": 31125,
+        "positives": 201,
+        "prevalence": 0.006457831325301205,
+        "ap": 0.039600131183782285,
+        "roc_auc": 0.860717914759407,
+        "brier": 0.013425408942164475,
+        "log_loss": 0.06401146329219107,
+        "ece10": 0.0390076961066001,
+        "k": 100,
+        "recall_at_k": 0.04975124378109453,
+        "precision_at_k": 0.1,
+        "ks": 0.5786193209350995,
+        "capture_top5pct": 0.3383084577114428
+      },
+      "test": {
+        "n": 91103,
+        "positives": 467,
+        "prevalence": 0.005126066101006553,
+        "ap": 0.03997930014504212,
+        "roc_auc": 0.8632335776501304,
+        "brier": 0.012241238567304562,
+        "log_loss": 0.06057190431489242,
+        "ece10": 0.039867068758813344,
+        "k": 100,
+        "recall_at_k": 0.017130620985010708,
+        "precision_at_k": 0.08,
+        "ks": 0.5741568528390333,
+        "capture_top5pct": 0.41755888650963596
+      },
+      "seed_runs": [
+        {
+          "best_epoch": 94,
+          "validation_ap": 0.037603601078437285,
+          "gates": [
+            [
+              0.5210000276565552,
+              0.5410000085830688,
+              0.4950000047683716,
+              0.4959999918937683
+            ],
+            [
+              0.5009999871253967,
+              0.49399998784065247,
+              0.492000013589859,
+              0.48100000619888306
+            ]
+          ]
+        },
+        {
+          "best_epoch": 97,
+          "validation_ap": 0.037829173626609584,
+          "gates": [
+            [
+              0.5059999823570251,
+              0.5,
+              0.4909999966621399,
+              0.4880000054836273
+            ],
+            [
+              0.5019999742507935,
+              0.4909999966621399,
+              0.4869999885559082,
+              0.4869999885559082
+            ]
+          ]
+        },
+        {
+          "best_epoch": 80,
+          "validation_ap": 0.034777918677943755,
+          "gates": [
+            [
+              0.5239999890327454,
+              0.5230000019073486,
+              0.4909999966621399,
+              0.4909999966621399
+            ],
+            [
+              0.49799999594688416,
+              0.4860000014305115,
+              0.49300000071525574,
+              0.4880000054836273
+            ]
+          ]
+        }
+      ]
+    }
+  },
+  "comparisons": {
+    "gbdt_own_financial_market_vs_gbdt_own_financial": {
+      "ap_difference": 0.10756799843081177,
+      "ap_difference_ci95": [
+        0.07579271604957868,
+        0.15934072942943903
+      ],
+      "clusters": 8947,
+      "largest_cluster": 12,
+      "successful_draws": 500,
+      "method": "paired graph-component resampling; retrospective sample only"
+    },
+    "gbdt_own_full_vs_gbdt_own_financial_market": {
+      "ap_difference": 0.022524189824566276,
+      "ap_difference_ci95": [
+        0.005547704279100354,
+        0.040995770940862535
+      ],
+      "clusters": 8947,
+      "largest_cluster": 12,
+      "successful_draws": 500,
+      "method": "paired graph-component resampling; retrospective sample only"
+    },
+    "two_stage_no_contagion_vs_gbdt_own_unlisted": {
+      "ap_difference": -0.0025449700751824095,
+      "ap_difference_ci95": [
+        -0.009251342801180546,
+        0.0028852395020898336
+      ],
+      "clusters": 8947,
+      "largest_cluster": 12,
+      "successful_draws": 500,
+      "method": "paired graph-component resampling; retrospective sample only"
+    },
+    "two_stage_contagion_vs_two_stage_no_contagion": {
+      "ap_difference": 0.0012179738269654725,
+      "ap_difference_ci95": [
+        -0.0055407768731943145,
+        0.006842307713715989
+      ],
+      "clusters": 8947,
+      "largest_cluster": 12,
+      "successful_draws": 500,
+      "method": "paired graph-component resampling; retrospective sample only"
+    },
+    "two_stage_contagion_vs_two_stage_random_neighbours": {
+      "ap_difference": 0.0038130537078202367,
+      "ap_difference_ci95": [
+        -6.630769748283236e-05,
+        0.009751215585262258
+      ],
+      "clusters": 8947,
+      "largest_cluster": 12,
+      "successful_draws": 500,
+      "method": "paired graph-component resampling; retrospective sample only"
+    },
+    "two_stage_random_neighbours_vs_two_stage_no_contagion": {
+      "ap_difference": -0.0025950798808547643,
+      "ap_difference_ci95": [
+        -0.009044487887137641,
+        0.0016573897682054428
+      ],
+      "clusters": 8947,
+      "largest_cluster": 12,
+      "successful_draws": 500,
+      "method": "paired graph-component resampling; retrospective sample only"
+    },
+    "two_stage_supply_only_vs_two_stage_no_contagion": {
+      "ap_difference": -0.0022200930576822472,
+      "ap_difference_ci95": [
+        -0.007498512524293714,
+        0.0025660147078476405
+      ],
+      "clusters": 8947,
+      "largest_cluster": 12,
+      "successful_draws": 500,
+      "method": "paired graph-component resampling; retrospective sample only"
+    },
+    "two_stage_people_only_vs_two_stage_no_contagion": {
+      "ap_difference": 0.00019856282676227605,
+      "ap_difference_ci95": [
+        -0.003890966774426462,
+        0.003916899231649926
+      ],
+      "clusters": 8947,
+      "largest_cluster": 12,
+      "successful_draws": 500,
+      "method": "paired graph-component resampling; retrospective sample only"
+    },
+    "two_stage_investor_only_vs_two_stage_no_contagion": {
+      "ap_difference": 0.0009742197159047783,
+      "ap_difference_ci95": [
+        -0.004965552387348908,
+        0.0064673890131954175
+      ],
+      "clusters": 8947,
+      "largest_cluster": 12,
+      "successful_draws": 500,
+      "method": "paired graph-component resampling; retrospective sample only"
+    },
+    "two_stage_diffusion_only_vs_two_stage_no_contagion": {
+      "ap_difference": 0.004438007399446664,
+      "ap_difference_ci95": [
+        -0.0014218111748655969,
+        0.012982898208566858
+      ],
+      "clusters": 8947,
+      "largest_cluster": 12,
+      "successful_draws": 500,
+      "method": "paired graph-component resampling; retrospective sample only"
+    },
+    "two_stage_customer_dependence_only_vs_two_stage_no_contagion": {
+      "ap_difference": -0.0022231572456368268,
+      "ap_difference_ci95": [
+        -0.006647894680630119,
+        0.0006369414721395185
+      ],
+      "clusters": 8947,
+      "largest_cluster": 12,
+      "successful_draws": 500,
+      "method": "paired graph-component resampling; retrospective sample only"
+    },
+    "gnn_mean_vs_mlp": {
+      "ap_difference": 0.005298143233747318,
+      "ap_difference_ci95": [
+        -0.011735054207545644,
+        0.018043087489496314
+      ],
+      "clusters": 8947,
+      "largest_cluster": 12,
+      "successful_draws": 500,
+      "method": "paired graph-component resampling; retrospective sample only"
+    },
+    "gnn_maxmean_vs_mlp": {
+      "ap_difference": 0.04712927521583811,
+      "ap_difference_ci95": [
+        0.028195627695634374,
+        0.0688982559960058
+      ],
+      "clusters": 8947,
+      "largest_cluster": 12,
+      "successful_draws": 500,
+      "method": "paired graph-component resampling; retrospective sample only"
+    },
+    "gnn_maxmean_rewired_vs_mlp": {
+      "ap_difference": -7.174385688014234e-05,
+      "ap_difference_ci95": [
+        -0.009122026914130103,
+        0.007958809112461822
+      ],
+      "clusters": 8947,
+      "largest_cluster": 12,
+      "successful_draws": 500,
+      "method": "paired graph-component resampling; retrospective sample only"
+    },
+    "gnn_maxmean_vs_gnn_mean": {
+      "ap_difference": 0.04183113198209079,
+      "ap_difference_ci95": [
+        0.02636748209274847,
+        0.06375244009157967
+      ],
+      "clusters": 8947,
+      "largest_cluster": 12,
+      "successful_draws": 500,
+      "method": "paired graph-component resampling; retrospective sample only"
+    },
+    "gnn_maxmean_vs_gnn_maxmean_rewired": {
+      "ap_difference": 0.04720101907271825,
+      "ap_difference_ci95": [
+        0.027869251252104533,
+        0.07065030443224353
+      ],
+      "clusters": 8947,
+      "largest_cluster": 12,
+      "successful_draws": 500,
+      "method": "paired graph-component resampling; retrospective sample only"
+    }
+  },
+  "counts": {
+    "train": {
+      "rows": 92833,
+      "positive_rows": 540,
+      "positive_firms": 160,
+      "firms": 9969
+    },
+    "validation": {
+      "rows": 31125,
+      "positive_rows": 201,
+      "positive_firms": 98,
+      "firms": 8173
+    },
+    "test": {
+      "rows": 91103,
+      "positive_rows": 467,
+      "positive_firms": 151,
+      "firms": 8947
+    }
+  },
+  "relation_coverage_test": {
+    "supplier": 0.12460621494352546,
+    "customer": 0.16717341909706596,
+    "people": 0.5320351689845559,
+    "investor": 0.27678561628047377
+  },
+  "shap_two_stage": {
+    "group_share": {
+      "own_financial": 0.5143391618879422,
+      "own_market": 0.0,
+      "own_events": 0.06224865075105321,
+      "own_rating": 0.0,
+      "stage1_own_score": 0.17995422008381715,
+      "contagion_supplier": 0.0030649930273737415,
+      "contagion_customer": 0.004871111338893632,
+      "contagion_people": 0.0807829364722387,
+      "contagion_investor": 0.018138578591371753,
+      "contagion_diffusion": 0.12583144375579147,
+      "contagion_customer_dependence": 0.010768904091518424
+    },
+    "top_features": [
+      {
+        "feature": "stage1_own_score",
+        "share": 0.17995422008381715
+      },
+      {
+        "feature": "diffused_2",
+        "share": 0.09536335799043817
+      },
+      {
+        "feature": "interest_coverage",
+        "share": 0.08248184778022483
+      },
+      {
+        "feature": "operating_cashflow_assets",
+        "share": 0.057513800428508885
+      },
+      {
+        "feature": "cash_assets",
+        "share": 0.054836385391431715
+      },
+      {
+        "feature": "liabilities_assets",
+        "share": 0.046045714130146354
+      },
+      {
+        "feature": "sales_assets",
+        "share": 0.04475713240129822
+      },
+      {
+        "feature": "log_sales",
+        "share": 0.03814271410197141
+      },
+      {
+        "feature": "debt_assets",
+        "share": 0.036233626577482275
+      },
+      {
+        "feature": "ebit_assets",
+        "share": 0.030463609418554898
+      },
+      {
+        "feature": "current_assets_assets",
+        "share": 0.027540100195373188
+      },
+      {
+        "feature": "late_filing_365",
+        "share": 0.027054287428113565
+      },
+      {
+        "feature": "current_ratio",
+        "share": 0.023258006832882018
+      },
+      {
+        "feature": "current_liabilities_assets",
+        "share": 0.022546736907259567
+      },
+      {
+        "feature": "lit_def_open",
+        "share": 0.021772719804733515
+      }
+    ]
+  },
+  "selected_by_validation": "gbdt_own_financial_market",
+  "scorecard": {
+    "score_cuts": [
+      780.2298890307377,
+      910.712718710178,
+      1072.5630125221755,
+      1200.2266876351368
+    ],
+    "grades": [
+      {
+        "grade": "E",
+        "test_rows": 1402,
+        "test_events": 175,
+        "test_event_rate": 0.12482168330955777,
+        "test_event_firms": 79
+      },
+      {
+        "grade": "D",
+        "test_rows": 5792,
+        "test_events": 185,
+        "test_event_rate": 0.03194060773480663,
+        "test_event_firms": 97
+      },
+      {
+        "grade": "C",
+        "test_rows": 16238,
+        "test_events": 73,
+        "test_event_rate": 0.00449562754033748,
+        "test_event_firms": 48
+      },
+      {
+        "grade": "B",
+        "test_rows": 31520,
+        "test_events": 30,
+        "test_event_rate": 0.0009517766497461929,
+        "test_event_firms": 20
+      },
+      {
+        "grade": "A",
+        "test_rows": 36151,
+        "test_events": 4,
+        "test_event_rate": 0.00011064700838151088,
+        "test_event_firms": 4
+      }
+    ]
+  },
+  "path_cases": {
+    "top2pct": 1822,
+    "with_high_risk_neighbour": 750,
+    "event_rate_with": 0.164,
+    "event_rate_top2pct": 0.10867178924259056,
+    "examples": [
+      {
+        "risk_rank": 6,
+        "p": 0.7265630717698254,
+        "own_stage1_p": 0.09864094401844348,
+        "relation": "people",
+        "neighbour_stage1_p": 0.7876272371010056,
+        "neighbour_recent_distress": 0,
+        "label": 1
+      },
+      {
+        "risk_rank": 7,
+        "p": 0.7225598455480506,
+        "own_stage1_p": 0.17779869158902684,
+        "relation": "people",
+        "neighbour_stage1_p": 0.03668050051976639,
+        "neighbour_recent_distress": 0,
+        "label": 0
+      },
+      {
+        "risk_rank": 9,
+        "p": 0.7044389610926393,
+        "own_stage1_p": 0.13679265243589908,
+        "relation": "people",
+        "neighbour_stage1_p": 0.9045954444601865,
+        "neighbour_recent_distress": 0,
+        "label": 1
+      },
+      {
+        "risk_rank": 12,
+        "p": 0.6902243453675414,
+        "own_stage1_p": 0.017508616016962467,
+        "relation": "people",
+        "neighbour_stage1_p": 0.18936540294633494,
+        "neighbour_recent_distress": 0,
+        "label": 1
+      },
+      {
+        "risk_rank": 13,
+        "p": 0.6721432635942132,
+        "own_stage1_p": 0.14368733916575685,
+        "relation": "people",
+        "neighbour_stage1_p": 0.13504236997344668,
+        "neighbour_recent_distress": 0,
+        "label": 0
+      },
+      {
+        "risk_rank": 14,
+        "p": 0.6719063415195498,
+        "own_stage1_p": 0.3304112673841402,
+        "relation": "investor",
+        "neighbour_stage1_p": 0.5511984127266062,
+        "neighbour_recent_distress": 1,
+        "label": 1
+      },
+      {
+        "risk_rank": 19,
+        "p": 0.6570578765203451,
+        "own_stage1_p": 0.4386151987895979,
+        "relation": "people",
+        "neighbour_stage1_p": 0.0309852898423366,
+        "neighbour_recent_distress": 0,
+        "label": 0
+      },
+      {
+        "risk_rank": 20,
+        "p": 0.6557362783831936,
+        "own_stage1_p": 0.019131551274119373,
+        "relation": "customer",
+        "neighbour_stage1_p": 0.03358369051601474,
+        "neighbour_recent_distress": 0,
+        "label": 1
+      }
+    ]
+  }
+}

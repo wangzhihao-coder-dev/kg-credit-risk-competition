@@ -1,0 +1,302 @@
+{
+  "rules": "Point-in-time panel for the competition task: 12-month bankruptcy / distress of all North-American listed firms.\n\nNodes: every (gvkey, quarter-end) with a fresh annual financial snapshot (UPD 2/3, data date <= point, age <= 550 days).\nNode features (visible at t = point + 1 day): financial ratios and size, CRSP market signals from months ending <= point,\nown risk events (Audit Analytics litigation / bankruptcy history, NT late filings, restatements) and, when rated,\nthe S&P rating state. Relations per quarter: supplier->customer (disclosure + 365 days, cumulative), shared\nBoardEx people, shared >=5% 13F holders (index-scale holders excluded). Labels: bankruptcy (AA bankruptcy notification\nstart/file date or CRSP delisting code 574) and distress (bankruptcy or CRSP performance delisting) within (t, t+365];\nrows with a bankruptcy in the previous 730 days are not supervised. Outputs go to data/processed/distress_panel/.",
+  "feature_names": [
+    "liabilities_assets",
+    "debt_assets",
+    "cash_assets",
+    "current_assets_assets",
+    "current_liabilities_assets",
+    "sales_assets",
+    "ebit_assets",
+    "operating_cashflow_assets",
+    "current_ratio",
+    "interest_coverage",
+    "ebit_margin",
+    "financial_age_days",
+    "log_assets",
+    "log_sales",
+    "ret_12m",
+    "vol_12m",
+    "log_mcap",
+    "penny_stock",
+    "drawdown_12m",
+    "ret_3m",
+    "lit_def_new_365",
+    "lit_def_open",
+    "late_filing_365",
+    "late_10k_365",
+    "restatement_365",
+    "restatement_negative_365",
+    "prior_bankruptcy",
+    "rated",
+    "rating_ordinal",
+    "rating_downgraded_365",
+    "rating_negative_outlook"
+  ],
+  "nodes": 278784,
+  "supervised": 277096,
+  "bankrupt_firms": 665,
+  "distress_firms": 1124,
+  "snapshots": {
+    "2015-03-31": {
+      "nodes": 8918,
+      "supply": 0,
+      "people": 31780,
+      "investor": 27101
+    },
+    "2015-06-30": {
+      "nodes": 9006,
+      "supply": 0,
+      "people": 31941,
+      "investor": 25648
+    },
+    "2015-09-30": {
+      "nodes": 8556,
+      "supply": 0,
+      "people": 31888,
+      "investor": 24389
+    },
+    "2015-12-31": {
+      "nodes": 8641,
+      "supply": 0,
+      "people": 31391,
+      "investor": 25330
+    },
+    "2016-03-31": {
+      "nodes": 8653,
+      "supply": 159,
+      "people": 31168,
+      "investor": 22796
+    },
+    "2016-06-30": {
+      "nodes": 8712,
+      "supply": 340,
+      "people": 30812,
+      "investor": 21856
+    },
+    "2016-09-30": {
+      "nodes": 8195,
+      "supply": 537,
+      "people": 29833,
+      "investor": 22340
+    },
+    "2016-12-31": {
+      "nodes": 8239,
+      "supply": 3073,
+      "people": 29577,
+      "investor": 22368
+    },
+    "2017-03-31": {
+      "nodes": 8261,
+      "supply": 3088,
+      "people": 29699,
+      "investor": 21451
+    },
+    "2017-06-30": {
+      "nodes": 8354,
+      "supply": 3146,
+      "people": 29328,
+      "investor": 19135
+    },
+    "2017-09-30": {
+      "nodes": 7896,
+      "supply": 2916,
+      "people": 28651,
+      "investor": 18394
+    },
+    "2017-12-31": {
+      "nodes": 7944,
+      "supply": 3432,
+      "people": 28270,
+      "investor": 17389
+    },
+    "2018-03-31": {
+      "nodes": 8007,
+      "supply": 3454,
+      "people": 28403,
+      "investor": 22866
+    },
+    "2018-06-30": {
+      "nodes": 8124,
+      "supply": 3475,
+      "people": 28420,
+      "investor": 23689
+    },
+    "2018-09-30": {
+      "nodes": 7739,
+      "supply": 3303,
+      "people": 28019,
+      "investor": 23567
+    },
+    "2018-12-31": {
+      "nodes": 7818,
+      "supply": 3729,
+      "people": 27751,
+      "investor": 23367
+    },
+    "2019-03-31": {
+      "nodes": 7878,
+      "supply": 3728,
+      "people": 27717,
+      "investor": 24261
+    },
+    "2019-06-30": {
+      "nodes": 7999,
+      "supply": 3759,
+      "people": 27749,
+      "investor": 21870
+    },
+    "2019-09-30": {
+      "nodes": 7599,
+      "supply": 3464,
+      "people": 27395,
+      "investor": 20496
+    },
+    "2019-12-31": {
+      "nodes": 7677,
+      "supply": 3813,
+      "people": 26854,
+      "investor": 21434
+    },
+    "2020-03-31": {
+      "nodes": 7738,
+      "supply": 3827,
+      "people": 26802,
+      "investor": 21400
+    },
+    "2020-06-30": {
+      "nodes": 7813,
+      "supply": 3805,
+      "people": 26401,
+      "investor": 23575
+    },
+    "2020-09-30": {
+      "nodes": 7412,
+      "supply": 3586,
+      "people": 26353,
+      "investor": 22664
+    },
+    "2020-12-31": {
+      "nodes": 7475,
+      "supply": 3905,
+      "people": 26511,
+      "investor": 24784
+    },
+    "2021-03-31": {
+      "nodes": 7555,
+      "supply": 3940,
+      "people": 27100,
+      "investor": 22655
+    },
+    "2021-06-30": {
+      "nodes": 7697,
+      "supply": 3949,
+      "people": 27098,
+      "investor": 21848
+    },
+    "2021-09-30": {
+      "nodes": 7408,
+      "supply": 3668,
+      "people": 26925,
+      "investor": 20420
+    },
+    "2021-12-31": {
+      "nodes": 7540,
+      "supply": 3963,
+      "people": 27061,
+      "investor": 21271
+    },
+    "2022-03-31": {
+      "nodes": 7668,
+      "supply": 3974,
+      "people": 27660,
+      "investor": 22193
+    },
+    "2022-06-30": {
+      "nodes": 7749,
+      "supply": 3973,
+      "people": 27277,
+      "investor": 21818
+    },
+    "2022-09-30": {
+      "nodes": 7545,
+      "supply": 3707,
+      "people": 27361,
+      "investor": 25414
+    },
+    "2022-12-31": {
+      "nodes": 7684,
+      "supply": 4038,
+      "people": 26422,
+      "investor": 23890
+    },
+    "2023-03-31": {
+      "nodes": 7808,
+      "supply": 4064,
+      "people": 26285,
+      "investor": 23139
+    },
+    "2023-06-30": {
+      "nodes": 7885,
+      "supply": 4047,
+      "people": 25761,
+      "investor": 23154
+    },
+    "2023-09-30": {
+      "nodes": 7591,
+      "supply": 3841,
+      "people": 25026,
+      "investor": 23769
+    }
+  },
+  "by_year_rows_bankruptcy_distress": {
+    "2015": [
+      34948,
+      254,
+      482
+    ],
+    "2016": [
+      33561,
+      183,
+      334
+    ],
+    "2017": [
+      32213,
+      132,
+      284
+    ],
+    "2018": [
+      31517,
+      147,
+      318
+    ],
+    "2019": [
+      30980,
+      234,
+      355
+    ],
+    "2020": [
+      30177,
+      139,
+      195
+    ],
+    "2021": [
+      29993,
+      54,
+      146
+    ],
+    "2022": [
+      30548,
+      189,
+      430
+    ],
+    "2023": [
+      23159,
+      212,
+      511
+    ]
+  },
+  "market_coverage": 0.6025309917355371,
+  "panel_sha256": "ef5b6a3c6a797a82bd331af46cd1b42e74e68cea3eb9d5956e024b1168f6f335",
+  "event_manifest_sha256": "b10338b180f7df4853d6cf420e9ce589e903c091c8f8a0fa612e8bcfccc9c9a3"
+}
