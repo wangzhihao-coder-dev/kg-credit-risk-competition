@@ -20,9 +20,10 @@ from audit_rating_history import ROOT
 from build_distress_panel import FEATURE_NAMES
 from run_distress_models import neighbours
 
-MODELS = {'graph': 'gnn_maxmean', 'no_graph': 'mlp', 'own_scorecard': 'gbdt_own_unlisted'}
+MODELS = {'graph': 'sage_nb', 'no_graph': 'mlp', 'own_scorecard': 'gbdt_own_unlisted'}  # graph: non-backtracking GraphSAGE
 SNAPSHOT = ROOT / 'data/raw/wrds/snapshot_population_2015_2023'
 REVIEW_BUDGET_SHARE = 0.05
+CASE_OWN_RANK_FLOOR = 0.25  # case shown in the report: on the graph model's list, outside the own-information model's top 25%
 LGD = 0.45
 LOSS_REDUCTION_SCENARIOS = (0.2, 0.3, 0.5)
 ASSUMPTIONS = {
@@ -177,7 +178,8 @@ def main():
     pos_firm = lambda k: {panel['gvkey'][i] for i in np.flatnonzero(test & (y == 1) & flagged[k])}
     only_graph = pos_firm('graph') - pos_firm('no_graph'); only_own = pos_firm('no_graph') - pos_firm('graph')
 
-    # Anonymised case: distressed client flagged by the graph model, ranked low by the own-information model.
+    # Anonymised case: distressed client on the graph model's review list that the own-information model ranks outside
+    # its top CASE_OWN_RANK_FLOOR of the same quarter (illustration; the report states this selection rule).
     rel = neighbours(panel); recent = panel['recent_distress']; ret = panel['X'][:, FEATURE_NAMES.index('ret_12m')]
     late = panel['X'][:, FEATURE_NAMES.index('late_filing_365')]
     incoming = defaultdict(list)
@@ -186,7 +188,7 @@ def main():
             continue
         for s, t in e:
             incoming[t].append((r, s))
-    candidates = [i for i in np.flatnonzero(test & (y == 1) & flagged['graph']) if quarter_rank['no_graph'][i] > 0.5 and incoming.get(i)]
+    candidates = [i for i in np.flatnonzero(test & (y == 1) & flagged['graph']) if quarter_rank['no_graph'][i] > CASE_OWN_RANK_FLOOR and incoming.get(i)]
     def strength(i):
         return max(neighbour_risk[s] for _, s in incoming[i])
     case = None
@@ -197,7 +199,8 @@ def main():
                 'graph_p': float(scores['graph'][i]), 'own_p': float(scores['no_graph'][i]),
                 'neighbours': [{'relation': r, 'risk_p': float(neighbour_risk[s]), 'recent_distress': int(recent[s]),
                                 'ret_12m': None if np.isnan(ret[s]) else float(ret[s]), 'late_filing': bool(late[s] > 0)} for r, s in nbrs],
-                'neighbour_count': len(incoming[i])}
+                'neighbour_count': len(incoming[i]), 'selection_rule': f'graph top {REVIEW_BUDGET_SHARE:.0%}, own-information rank below top {CASE_OWN_RANK_FLOOR:.0%}',
+                'candidates': len(candidates)}
 
     # Descriptive: distress rate of clients by counterparty signals visible at the observation date.
     def any_neighbour(flag):

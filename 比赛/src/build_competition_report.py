@@ -1,5 +1,9 @@
 """Submission report for the competition (six required sections, body <= 8 pages), business-facing, with vector figures.
 
+Main model: non-backtracking GraphSAGE (sage_gnn.py), compared with common industry baselines. Every claim is checked
+against the current experiment aggregates, including the ones that do not favour the graph model (random-relation
+control, debt).
+
 Narrative order: section 4 holds everything measured on the test period (early warning, grades, explainability,
 measured debt); section 5 holds product use, the input/output estimate built on assumed parameters, and the roll-out
 path. The previous layout is kept as reports/备份/参赛报告_原版*.
@@ -13,7 +17,7 @@ import math
 from pathlib import Path
 from xml.sax.saxutils import escape
 
-from reportlab.graphics.shapes import Circle, Drawing, Line, PolyLine, Polygon, Rect, String
+from reportlab.graphics.shapes import Circle, Drawing, Group, Line, PolyLine, Polygon, Rect, String
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import ParagraphStyle
@@ -28,6 +32,7 @@ EXP = ROOT / 'experiments'
 PDF = ROOT / 'reports/参赛报告_经营类客户关联图谱风控模型.pdf'
 MD = ROOT / 'reports/参赛报告.md'
 BODY_PAGE_LIMIT = 8
+REPO_URL = 'https://github.com/wangzhihao-coder-dev/kg-credit-risk-competition'
 INK, INK2, MUTED, GRID = '#1f2a37', '#52514e', '#898781', '#e4e3df'
 BLUE, ORANGE, AQUA, YELLOW, RED = '#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#d03b3b'
 NAVY = '#13334e'
@@ -60,7 +65,7 @@ def framework():
     d = Drawing(W, 118)
     steps = [('多源数据', ['财务 / 股价 / 评级', '涉诉 / 延迟披露 / 破产', '供应链 / 任职 / 持股']),
              ('企业关联图谱', ['企业节点·季度快照', '供应·人员·股东三类边', '风险事件时序属性']),
-             ('关联风险传导模型', ['客户编码器+关联方编码器', '按关系 max+mean 聚合', '两跳传导']),
+             ('关联风险传导模型', ['客户编码器+关联方编码器', 'GraphSAGE 均值聚合', '非回溯两跳传导']),
              ('风险评分与解释', ['600分基准 A–E 五级', '传导路径归因', '季度更新']),
              ('业务处置', ['准入与定价', '贷中预警与复核', '限额与压降'])]
     bw, gap = 88, 13
@@ -80,7 +85,7 @@ def graph_schema():
     box(d, 365, 90, 125, 52, '下游客户', ['股价·评级·事件', '收入依赖度（边权）'])
     box(d, 5, 6, 150, 52, '人员关联企业', ['同一董事/高管同时在任', '常对应同一集团/实控人'])
     box(d, 172, 6, 150, 52, '投资人关联企业', ['同一机构持股均 ≥5%', '共同大股东'])
-    box(d, 340, 6, 150, 52, '两跳关联方', ['关联方的关联方', '风险经两层传导'])
+    box(d, 340, 6, 150, 52, '两跳关联方', ['关联方的关联方', '两层传导，不回传客户自身'])
     for x1, y1, x2, y2, t in [(130, 116, 178, 116, '供货'), (318, 116, 365, 116, '供货'), (210, 90, 80, 58, '共享人员'),
                               (248, 90, 248, 58, '共同股东'), (286, 90, 415, 58, '多跳')]:
         d.add(Line(x1, y1, x2, y2, strokeColor=colors.HexColor(MUTED), strokeWidth=1))
@@ -89,29 +94,20 @@ def graph_schema():
 
 
 def architecture():
-    d = Drawing(W, 186)
-    box(d, 0, 112, 110, 46, '客户自身特征', ['财务比率·规模', '涉诉·延迟披露·重述'], '#fff4ee', ORANGE)
-    box(d, 0, 32, 110, 46, '关联方完整特征', ['+股价·评级', '+近期困境'])
-    box(d, 135, 112, 85, 46, '客户编码器', ['线性+ReLU'], '#fff4ee', ORANGE)
-    box(d, 135, 32, 85, 46, '关联方编码器', ['线性+ReLU'])
-    arrow(d, 110, 135, 133, 135); arrow(d, 110, 55, 133, 55)
-    rels = ['供应商', '客户', '人员', '投资人']
-    for i, r in enumerate(rels):
-        y = 132 - i * 30
-        d.add(Rect(245, y, 120, 24, rx=3, ry=3, fillColor=colors.HexColor('#f6f8fa'), strokeColor=colors.HexColor(GRID)))
-        txt(d, 252, y + 9, r, 7.5, INK)
-        d.add(Rect(290, y + 4, 32, 16, fillColor=colors.HexColor('#d9e8fb'), strokeColor=None)); txt(d, 306, y + 9, 'mean', 7, INK, 'middle')
-        d.add(Rect(326, y + 4, 32, 16, fillColor=colors.HexColor('#fde3d6'), strokeColor=None)); txt(d, 342, y + 9, 'max', 7, INK, 'middle')
-        arrow(d, 220, 55, 243, y + 12, '#b9c6d3')
-    txt(d, 305, 162, '按关系聚合 × 关系门控（两层 = 两跳）', 7.5, INK2, 'middle')
-    box(d, 385, 96, 105, 46, '风险表示 h', ['自身 + Σ 关系消息', '拼接原始输入'], '#eef4fc', BLUE)
-    d.add(Line(220, 150, 232, 176, strokeColor=colors.HexColor(MUTED), strokeWidth=1.2)); d.add(Line(232, 176, 437, 176, strokeColor=colors.HexColor(MUTED), strokeWidth=1.2))
-    arrow(d, 437, 176, 437, 144); txt(d, 335, 179, '客户自身表示', 7, INK2, 'middle')
-    for i in range(4):
-        arrow(d, 365, 144 - i * 30, 383, 119, '#b9c6d3')
-    box(d, 385, 22, 105, 50, '风险评分', ['P(12个月内困境)', '→ 600分 A–E 五级'], '#fff4ee', ORANGE)
-    arrow(d, 437, 96, 437, 74)
-    txt(d, 0, 6, '训练：正样本按 √(负/正) 加权；早停与模型选择只看验证期；三个随机种子平均。max 通道保留“最危险的关联方”。', 7.2, INK2)
+    d = Drawing(W, 196)
+    box(d, 0, 124, 108, 46, '客户自身特征', ['财务比率·规模', '涉诉·延迟披露·重述'], '#fff4ee', ORANGE)
+    box(d, 0, 44, 108, 46, '关联方完整特征', ['+股价·评级', '（上市关联方公开可得）'])
+    box(d, 126, 124, 78, 46, '客户编码器', ['线性+ReLU'], '#fff4ee', ORANGE)
+    box(d, 126, 44, 78, 46, '关联方编码器', ['线性+ReLU'])
+    arrow(d, 108, 147, 124, 147); arrow(d, 108, 67, 124, 67)
+    box(d, 224, 36, 120, 62, '第1层：关联方 j', ['对 j 的关联方取均值', '（不含客户 i 本身）', '+ j 自身表示'])
+    box(d, 224, 116, 120, 62, '第2层：客户 i', ['对各关联方第1层', '表示取均值', '+ 客户自身表示'], '#fff4ee', ORANGE)
+    arrow(d, 204, 67, 222, 67); arrow(d, 204, 147, 222, 147); arrow(d, 284, 98, 284, 114)
+    box(d, 368, 116, 122, 62, '风险评分', ['拼接客户原始输入', 'P(12个月内困境)', '→ 600分 A–E 五级'], '#fff4ee', ORANGE)
+    arrow(d, 344, 147, 366, 147)
+    box(d, 368, 30, 122, 72, '非回溯约束', ['j 发给 i 的消息先剔除', 'i 自己的信息，客户自身', '股价不会经关联方', '“回声”回到自己'], '#fdecec', RED)
+    d.add(Line(344, 67, 366, 67, strokeColor=colors.HexColor(RED), strokeWidth=1, strokeDashArray=[2, 2]))
+    txt(d, 0, 10, '供应、人员、股东三类关系合并为一张关联网（GraphSAGE 均值聚合）；正样本按 √(负/正) 加权；早停只看验证期；三个随机种子平均。', 7.2, INK2)
     return d
 
 
@@ -150,6 +146,30 @@ def gains_chart(shares, series, height=190):
     return d
 
 
+def roc_grid(roc, panels, reference, cols=3, height=268):
+    """One ROC panel per model (panels: (key, title, color)); the reference model is repeated faintly in every other panel."""
+    d = Drawing(W, height); rows = math.ceil(len(panels) / cols); cell_w, cell_h = W / cols, height / rows
+    fpr = roc['fpr']; ref = roc['models'][reference]['tpr']
+    for i, (k, title, color) in enumerate(panels):
+        ox, oy = cell_w * (i % cols), height - cell_h * (i // cols + 1)
+        left, bottom = ox + 30, oy + 26; size = min(cell_w - 42, cell_h - 46)
+        xs = lambda v: left + size * v; ys = lambda v: bottom + size * v
+        for v in (0, .5, 1):
+            d.add(Line(left, ys(v), xs(1), ys(v), strokeColor=colors.HexColor(GRID), strokeWidth=.5))
+            d.add(Line(xs(v), bottom, xs(v), ys(1), strokeColor=colors.HexColor(GRID), strokeWidth=.5))
+            txt(d, left - 3, ys(v) - 2.5, f'{v:g}', 6, MUTED, 'end'); txt(d, xs(v), bottom - 8, f'{v:g}', 6, MUTED, 'middle')
+        d.add(Line(xs(0), ys(0), xs(1), ys(1), strokeColor=colors.HexColor(MUTED), strokeWidth=.6, strokeDashArray=[2, 2]))
+        if k != reference:
+            d.add(PolyLine(sum(([xs(x), ys(t)] for x, t in zip(fpr, ref)), []), strokeColor=colors.HexColor('#f5c2ab'), strokeWidth=1, strokeDashArray=[3, 2]))
+        d.add(PolyLine(sum(([xs(x), ys(t)] for x, t in zip(fpr, roc['models'][k]['tpr'])), []), strokeColor=colors.HexColor(color), strokeWidth=1.8))
+        txt(d, left, ys(1) + 7, title, 7.5, INK)
+        txt(d, xs(1) - 3, bottom + 5, f"AUC {roc['models'][k]['auc']:.3f}", 8, color, 'end')
+        txt(d, xs(.5), bottom - 17, '误报率 FPR', 6.3, INK2, 'middle')
+        label = Group(String(0, 0, '命中率 TPR', fontName='ReportCJK', fontSize=6.3, fillColor=colors.HexColor(INK2), textAnchor='middle'))
+        label.transform = (0, 1, -1, 0, left - 16, ys(.5)); d.add(label)
+    return d
+
+
 def ego_case(case, height=230):
     d = Drawing(W, height); cx, cy, r = 140, height / 2 + 2, 66
     names = {'supplier': '供应商', 'customer': '客户', 'people': '共享董事/高管', 'investor': '共同大股东'}
@@ -171,7 +191,7 @@ def ego_case(case, height=230):
             txt(d, lx, top - 9, '·'.join(sig), 6.6, RED, anchor)
     d.add(Circle(cx, cy, 20, fillColor=colors.HexColor(ORANGE), strokeColor=colors.white, strokeWidth=2)); txt(d, cx, cy - 3, '客户', 8, '#ffffff', 'middle')
     x0 = 305
-    txt(d, x0, height - 22, '案例：报表“看起来正常”的客户', 9, NAVY)
+    txt(d, x0, height - 22, '案例：自身报表风险不突出的客户', 9, NAVY)
     names_short = {'supplier': '供应商', 'customer': '客户', 'people': '共享董事企业', 'investor': '共同大股东企业'}
     signals = []
     for n in case['neighbours']:
@@ -181,8 +201,8 @@ def ego_case(case, height=230):
             signals.append(names_short[n['relation']] + '：' + '、'.join(parts))
     quarter = {'03': '一', '06': '二', '09': '三', '12': '四'}[case['quarter'][5:7]]
     rows = [f"观察时点：{case['quarter'][:4]}年{quarter}季度末；共 {case['neighbour_count']} 个关联方",
-            f"仅用自身报表：同季排名第 {case['own_rank_pct'] * 100:.0f} 百分位（中游）",
-            f"关联图谱模型：同季排名前 {case['graph_rank_pct'] * 100:.1f}%，进入E级"] + \
+            f"不用图谱：同季风险排名第 {case['own_rank_pct'] * 100:.0f} 百分位（未进前25%）",
+            f"关联图谱模型：同季排名前 {case['graph_rank_pct'] * 100:.1f}%，进入复核名单"] + \
            [('关联信号：' if i == 0 else '　　　　　') + sig for i, sig in enumerate(signals[:3])] + \
            ['结果：该客户在随后12个月内陷入困境（破产/摘牌）']
     for i, row in enumerate(rows):
@@ -197,8 +217,9 @@ def main():
     main_run = S['runs']['main_all_relations_full_neighbour_view']['test']; base = B['base_rate']
     gains, shares = B['gains'], B['review_shares']; g = lambda k, s: gains[k][shares.index(s)]
     prec = lambda k, s: g(k, s) * base / s
-    D = B['measured_debt']; dm = D['by_model']; conc = D['concentration']; SL = B['scenario_loss']
+    D = B['measured_debt']; dm = D['by_model']; conc = D['concentration']
     snaps = A['snapshots']; mean_edges = lambda k: sum(v[k] for v in snaps.values()) / len(snaps)
+    run = lambda k, s='test': U['runs'][k][s]; cmp_ = lambda a, b: U['comparisons'][f'{a}_vs_{b}']
 
     pdfmetrics.registerFont(TTFont('ReportCJK', FONT))
     body = ParagraphStyle('body', fontName='ReportCJK', fontSize=9.4, leading=14.6, spaceAfter=5, wordWrap='CJK', textColor=colors.HexColor('#26354a'))
@@ -234,22 +255,24 @@ def main():
     pct = lambda x, n=1: f'{100 * x:.{n}f}%'
     yi = lambda m, n=0: f'{m / 100:,.{n}f}亿美元'  # source unit: millions
     ci = lambda pair: f"{pair[0] / 100:,.0f}～{pair[1] / 100:,.0f}亿美元"
+    rng = lambda c, k='ap': f"{c[k + '_difference']:+.3f}（95%区间{c[k + '_difference_ci95'][0]:+.3f}～{c[k + '_difference_ci95'][1]:+.3f}）"
     half = B['review_share_for_half_of_events']
-    debt_gap = D['graph_minus_model_m']['own_scorecard']
+    firms_gap = dm['graph']['firms'] - dm['own_scorecard']['firms']; firms_ci = conc['graph_minus_model_firms_ci95']['own_scorecard']
+    vs_mlp, vs_card, vs_rand = cmp_('sage_nb', 'mlp'), cmp_('sage_nb', 'gbdt_own_unlisted'), cmp_('sage_nb', 'sage_nb_rewired')
 
     # ---------------- Cover + abstract ----------------
     para('基于关联图谱的经营类客户风险预警模型', title_s, '# ')
     para('让“看不见”的关联风险进入授信决策：上下游、董事高管与大股东关联中的风险传导识别', small)
-    para(f"经营类客户的风险常常不是从自身报表开始暴露的：上游供应商断供、共享董事的关联企业爆雷、大股东旗下企业接连出事，往往先于客户自身财务恶化。"
-         f"本项目构建覆盖供应链、董事高管任职与机构持股三类关系、并携带涉诉、延迟披露、财务重述、破产等风险事件时序的企业关联图谱，"
-         f"提出“客户编码器+关联方编码器+按关系max/mean聚合”的关系型图神经网络，在客户只提供报表与风险事件的条件下，预测其未来12个月陷入经营困境的概率。", key)
+    para("经营类客户的风险常常不是从自身报表开始暴露的：上游供应商断供、共享董事的关联企业爆雷、大股东旗下企业接连出事，往往先于客户自身财务恶化。"
+         "本项目构建覆盖供应链、董事高管任职与机构持股三类关系、并携带涉诉、延迟披露、财务重述、破产等风险事件时序的企业关联图谱，"
+         "提出“客户编码器+关联方编码器+非回溯GraphSAGE”的图神经网络：关联方的风险经两层传导到客户，同时保证客户自身拿不到的市场信息不会经关联方“回流”，"
+         "在客户只提供报表与风险事件的条件下，预测其未来12个月陷入经营困境的概率。", key)
     para(f"核心结果（2021–2023年时间外测试，每季度约{B['avg_clients_per_quarter']:,.0f}户、共{B['distressed_firms']}家困境企业）："
-         f"每季度只复核风险最高的5%客户，即可提前覆盖{pct(g('graph', .05))}的困境事件（传统报表评分卡{pct(g('own_scorecard', .05))}）；"
-         f"覆盖一半困境事件所需的复核量由{pct(B['review_share_for_half_of_events']['own_scorecard'], 0)}客户降至{pct(B['review_share_for_half_of_events']['graph'], 0)}；"
-         f"{B['caught_only_with_graph']}家困境企业只有借助关联图谱才能提前识别。"
-         f"按实测债务计，测试期内关联图谱模型在复核前5%名单中提前识别的困境企业共{dm['graph']['firms']}家、合计涉及债务约{yi(dm['graph']['debt_total_nominal_m'])}"
-         f"（占全部困境企业债务的{pct(dm['graph']['capture_by_amount'])}），比传统评分卡（{dm['own_scorecard']['firms']}家、约{yi(dm['own_scorecard']['debt_total_nominal_m'])}）"
-         f"多{dm['graph']['firms'] - dm['own_scorecard']['firms']}家、约{yi(debt_gap)}。债务集中于少数大型企业，金额差额的不确定性较大，家数优势更稳健（见4.4节）。")
+         f"关联图谱模型的排序能力优于传统报表评分卡与不用图谱的同特征模型（AUC {main_run['roc_auc']:.3f}对{run('gbdt_own_unlisted')['roc_auc']:.3f}、{run('mlp')['roc_auc']:.3f}，"
+         f"KS {main_run['ks']:.3f}对{run('gbdt_own_unlisted')['ks']:.3f}、{run('mlp')['ks']:.3f}）；每季度复核风险最高的5%客户，可提前覆盖{pct(g('graph', .05))}的困境事件"
+         f"（评分卡{pct(g('own_scorecard', .05))}）；覆盖一半困境事件所需的复核量由{pct(half['own_scorecard'], 0)}客户降至{pct(half['graph'], 0)}；"
+         f"提前识别的困境企业{dm['graph']['firms']}家，比评分卡多{firms_gap}家（95%区间{firms_ci[0]:.0f}～{firms_ci[1]:.0f}家）。"
+         f"图谱多识别的困境企业以中小企业为主，按债务金额计与评分卡相当（4.4节）。")
 
     # ---------------- 1 Data ----------------
     h('一、数据介绍')
@@ -263,7 +286,7 @@ def main():
           [105, 205, 185])
     para(f"样本覆盖2015–2023年北美全部上市企业，按季度建立图谱快照，共{len(snaps)}个季度、{A['nodes']:,}个企业-季度节点（每季度约{mean_edges('nodes'):,.0f}家）。"
          '每个季度末只使用当时已经公开的信息；标签为观察后12个月内是否陷入经营困境（破产申请或因业绩被摘牌）。'
-         '模型在2015–2017年训练、2019年验证、2021–2023年测试，测试期完全不参与建模。')
+         '模型在2015–2017年训练、2019年验证、2021–2023年测试，测试期完全不参与训练。')
     para('为贴合“经营类客户”这一赛题对象，我们采用非上市客户视角：客户本身只提供报表与风险事件，不使用其股价或外部评级；'
          '而它的关联方多为上市公司，其股价、评级与风险事件可以从公开渠道获得。')
 
@@ -283,102 +306,111 @@ def main():
     para(f"关联关系覆盖面广：测试期{pct(cov['people'])}的客户存在共享董事/高管的关联企业，{pct(cov['investor'])}有共同大股东，"
          f"{pct(cov['customer'])}有已披露的主要客户、{pct(cov['supplier'])}有已披露的供应商；平均每季度约{mean_edges('people'):,.0f}条人员关联、"
          f"{mean_edges('investor'):,.0f}条股东关联与{mean_edges('supply'):,.0f}条供应链关联。")
-    fo = lambda k: F['runs'][k]['test']['ap']; uo = lambda k: U['runs'][k]['test']['ap']
+    fo = lambda k: F['runs'][k]['test']['ap']
     figure(vbars([('仅用报表', fo('gbdt_own_financial'), '#b9c6d3'), ('报表+自身股价\n（上市企业）', fo('gbdt_own_financial_market'), BLUE),
-                  ('报表+风险事件\n（非上市客户）', uo('mlp'), YELLOW), ('非上市客户\n+关联图谱', main_run['ap'], ORANGE)],
+                  ('报表+风险事件\n（非上市客户）', run('mlp')['ap'], YELLOW), ('非上市客户\n+关联图谱', main_run['ap'], ORANGE)],
                  '不同信息条件下的困境识别能力（测试期 AP；随机猜测约 0.012）', lambda v: f'{v:.3f}', height=140, max_value=0.27),
-           '图4  对上市企业，股价已经“吸收”了大部分关联风险；对没有股价的经营类客户，关联图谱补回了大部分缺失的外部信息——这正是本项目的价值所在。')
+           f"图4  自身股价是上市企业最强的风险信号；没有股价的经营类客户识别难度大得多。关联图谱为这类客户补回了一部分外部信息"
+           f"（AP {run('mlp')['ap']:.3f}→{main_run['ap']:.3f}，AUC {run('mlp')['roc_auc']:.3f}→{main_run['roc_auc']:.3f}），但不能替代自身的市场信号——"
+           "图谱模型的定位是在行内报表评分之上提供增量预警。")
 
     # ---------------- 3 Model ----------------
     story.append(CondPageBreak(330)); h('三、模型分析')
     h('3.1 企业关联图谱', 2)
-    figure(graph_schema(), '图5  图谱结构：客户以“非上市视角”进入，关联方以完整信息进入；三类关系分别建模，两层传导覆盖“关联方的关联方”。')
-    h('3.2 关系型 max+mean 图神经网络', 2)
-    figure(architecture(), '图6  模型结构：客户与关联方使用不同编码器；每类关系分别做均值聚合（整体关联环境）与最大值聚合（最危险的关联方）。')
+    figure(graph_schema(), '图5  图谱结构：客户以“非上市视角”进入，关联方以完整信息进入；三类关系合并为一张关联网，两层传导覆盖“关联方的关联方”，且客户自身信息不会经关联方回流。')
+    h('3.2 非回溯 GraphSAGE 图神经网络', 2)
+    figure(architecture(), '图6  模型结构：客户与关联方使用不同编码器；两层 GraphSAGE 均值聚合把关联方及其关联方的风险传到客户；非回溯约束保证客户自身信息不回流。')
     para('三个关键设计：（1）双编码器——客户只用行内可得信息，关联方用全量公开信息，二者在同一表示空间中交互；'
-         '（2）max+mean聚合——风险传导往往来自“一个出事的关联方”，只取平均会被大量健康关联方稀释，max通道把最危险的关联方保留下来；'
-         '（3）分关系建模与两层传导——供应、人员、股东关系各自学习传导强度，第二层把“关联方的关联方”的风险也传递给客户。')
+         '（2）GraphSAGE 均值聚合——关联方的整体风险环境与客户自身表示分开加权，结构简洁，对新进件客户可直接推断，也便于扩展到行内大规模关联网络；'
+         '（3）非回溯传导——客户作为别人的关联方时以完整信息入图，普通的两层传导会经“客户→关联方→客户”把客户自己的股价、评级带回给它；'
+         '非回溯传导在第二层先从关联方的消息中剔除客户自身的信息，保证模型只使用银行对非上市客户真正可得的信息。')
+    h('3.3 模型比较', 2)
     rows = [('gbdt_own_unlisted', '传统报表评分卡（GBDT）'), ('mlp', '同特征神经网络（不用图谱）'), ('two_stage_contagion', '两阶段关联特征模型'),
-            ('gnn_mean', '图神经网络（仅均值聚合）'), ('gnn_maxmean', '关系型 max+mean 图神经网络（本方案）'), ('gnn_maxmean_rewired', '对照：关联关系随机打乱')]
+            ('sage_nb', '非回溯 GraphSAGE（本方案）'), ('sage_nb_rewired', '对照：关联关系随机打乱')]
     table(['模型（非上市客户视角，2021–2023测试）', '困境 AP', 'AUC', 'KS', '破产 AP'],
-          [[n, f"{U['runs'][k]['test']['ap']:.3f}", f"{U['runs'][k]['test']['roc_auc']:.3f}", f"{U['runs'][k]['test']['ks']:.3f}", f"{UB['runs'][k]['test']['ap']:.3f}"] for k, n in rows],
-          [215, 70, 70, 70, 70], highlight=4,
+          [[n, f"{run(k)['ap']:.3f}", f"{run(k)['roc_auc']:.3f}", f"{run(k)['ks']:.3f}", f"{UB['runs'][k]['test']['ap']:.3f}"] for k, n in rows],
+          [215, 70, 70, 70, 70], highlight=3,
           note=f"随机猜测的AP约等于事件发生率（困境{base:.3f}、破产{load('distress_bankruptcy_unlisted_gnn_study.json')['test_event_rate']:.3f}）。"
-               f"本方案相对不用图谱的同特征模型AP提升{U['comparisons']['gnn_maxmean_vs_mlp']['ap_difference']:+.3f}（95%区间{U['comparisons']['gnn_maxmean_vs_mlp']['ap_difference_ci95'][0]:+.3f}～{U['comparisons']['gnn_maxmean_vs_mlp']['ap_difference_ci95'][1]:+.3f}）；"
-               '把关联关系随机打乱后提升完全消失，说明模型学到的是真实的关联风险而非图结构本身。')
-    sr = S['runs']
-    figure(vbars([('仅供应链', sr['supply_only']['test']['ap'], BLUE), ('仅人员关系', sr['people_only']['test']['ap'], BLUE),
-                  ('仅股东关系', sr['investor_only']['test']['ap'], BLUE), ('三类关系\n（本方案）', sr['main_all_relations_full_neighbour_view']['test']['ap'], ORANGE),
-                  ('关联方也不用\n市场信号', sr['neighbour_view_unlisted_only']['test']['ap'], '#b9c6d3')],
-                 '消融分析：不同关系与关联方信息对困境识别的贡献（测试期 AP）', lambda v: f'{v:.3f}', height=135, max_value=0.2),
-           '图7  人员与股东关系贡献最大，三类关系合用时最高（与单用人员或股东关系的差距不大），单用供应链较弱；若关联方也只提供报表信息，提升基本消失——上市关联方的市场信号是风险传导的主要“信使”。')
+               f"本方案相对不用图谱的同特征模型：AUC {rng(vs_mlp, 'auc')}，AP {rng(vs_mlp)}；相对传统评分卡：AP {rng(vs_card)}，AUC {rng(vs_card, 'auc')}。"
+               f"以随机打乱关联关系作对照，本方案的AP与之相当（本方案减对照{rng(vs_rand)}），AUC则显著更高（{rng(vs_rand, 'auc')}）：名单精度上的提升有相当部分来自同季度企业整体的市场环境，"
+               f"真实关联关系的贡献主要体现在排序能力上。")
+    roc = load('roc_curves.json')
+    tpr_at = lambda k, x: roc['models'][k]['tpr'][roc['fpr'].index(x)]
+    roc_color = lambda k: ORANGE if k == 'sage_nb' else ('#9a9890' if k.endswith('rewired') else BLUE)
+    roc_titles = dict(rows)
+    figure(roc_grid(roc, [(k, roc_titles[k], roc_color(k)) for k, _ in rows], 'sage_nb'),
+           f"图7  各模型在测试期的ROC曲线（{roc['n']:,}个企业-季度，其中{roc['positives']:,}个在12个月内陷入困境）：横轴为误把健康客户列为高风险的比例，纵轴为困境客户被识别出的比例；"
+           f"灰色虚线为随机猜测，浅橙色虚线为本方案。误报率5%时本方案识别出{pct(tpr_at('sage_nb', .05))}的困境客户，传统评分卡{pct(tpr_at('gbdt_own_unlisted', .05))}，"
+           f"不用图谱的模型{pct(tpr_at('mlp', .05))}。")
+    sr = S['runs']; sa = lambda k: sr[k]['test']
+    figure(vbars([('仅供应链', sa('supply_only')['roc_auc'], BLUE), ('仅人员关系', sa('people_only')['roc_auc'], BLUE),
+                  ('仅股东关系', sa('investor_only')['roc_auc'], BLUE), ('三类关系\n（本方案）', sa('main_all_relations_full_neighbour_view')['roc_auc'], ORANGE),
+                  ('关联方也不用\n市场信号', sa('neighbour_view_unlisted_only')['roc_auc'], '#b9c6d3')],
+                 '消融分析：不同关系与关联方信息对排序能力的贡献（测试期 AUC）', lambda v: f'{v:.3f}', height=135, max_value=1.0),
+           f"图8  三类关系合用时AUC最高，单用供应链明显偏弱（{sa('supply_only')['roc_auc']:.3f}）；若关联方也只提供报表信息，AUC降至{sa('neighbour_view_unlisted_only')['roc_auc']:.3f}——"
+           f"上市关联方的市场信号是风险传导的主要载体。按AP比较，各消融版本与本方案的差异均不显著（单用股东关系为{sa('investor_only')['ap']:.3f}，本方案{sa('main_all_relations_full_neighbour_view')['ap']:.3f}）。")
 
     # ---------------- 4 Validation: what the model measurably did in the test period ----------------
     h('四、应用验证')
-    h('4.1 预警效果：抓得多、抓得早', 2)
-    para(f"本节用两个业务指标衡量模型：“名单命中率”即AP所刻画的准确度——名单里有多少客户真的出事；“抓获率”即提前覆盖的风险事件比例——出事的客户有多少提前进了名单。"
-         f"如何理解AP={main_run['ap']:.3f}：其下限等于事件发生率（约{base:.3f}）。困境是年发生率约1%的稀有事件，"
-         f"因此AP {main_run['ap']:.3f}意味着模型比随机猜测准约{main_run['ap'] / base:.0f}倍。换成业务语言：每季度风险最高的1%客户中，约每{1 / prec('graph', .01):.0f}户就有1户在一年内陷入困境，"
-         f"而随机抽查要约{1 / base:.0f}户才遇到1户。")
+    h('4.1 预警效果：用更少的复核覆盖更多风险', 2)
+    para(f"本节用两个业务指标衡量模型：“名单命中率”——名单里有多少客户真的出事；“抓获率”——出事的客户有多少提前进了名单。"
+         f"如何理解AP={main_run['ap']:.3f}：其下限等于事件发生率（约{base:.3f}），困境是年发生率约1%的稀有事件，AP {main_run['ap']:.3f}约为随机水平的{main_run['ap'] / base:.0f}倍。"
+         f"换成业务语言：每季度风险最高的1%客户中，约每{1 / prec('graph', .01):.0f}户就有1户在一年内陷入困境，而随机抽查要约{1 / base:.0f}户才遇到1户。")
     figure(gains_chart(shares, [('关联图谱模型', gains['graph'], ORANGE, None), ('不用图谱的模型', gains['no_graph'], BLUE, None),
                                 ('传统报表评分卡', gains['own_scorecard'], AQUA, [3, 2]), ('随机抽查', gains['random'], MUTED, [1, 2])]),
-           f"图8  预警名单的“抓获率”曲线：每季度复核前5%客户（虚线），本方案抓到{pct(g('graph', .05))}的困境事件，传统评分卡{pct(g('own_scorecard', .05))}，随机抽查5%。")
+           f"图9  预警名单的“抓获率”曲线：每季度复核前5%客户（虚线），本方案抓到{pct(g('graph', .05))}的困境事件，不用图谱{pct(g('no_graph', .05))}，传统评分卡{pct(g('own_scorecard', .05))}，随机抽查5%。")
     table(['业务指标（2021–2023测试期，按季度滚动）', '关联图谱模型', '不用图谱', '传统评分卡'],
           [['复核前5%客户：抓到的困境事件', pct(g('graph', .05)), pct(g('no_graph', .05)), pct(g('own_scorecard', .05))],
            ['复核前5%客户：名单命中率（倍于随机）', f"{pct(prec('graph', .05))}（{prec('graph', .05) / base:.1f}倍）", f"{pct(prec('no_graph', .05))}（{prec('no_graph', .05) / base:.1f}倍）", f"{pct(prec('own_scorecard', .05))}（{prec('own_scorecard', .05) / base:.1f}倍）"],
            ['复核前1%客户：名单命中率', pct(prec('graph', .01)), pct(prec('no_graph', .01)), pct(prec('own_scorecard', .01))],
-           ['抓到一半困境事件所需复核比例', pct(B['review_share_for_half_of_events']['graph'], 0), pct(B['review_share_for_half_of_events']['no_graph'], 0), pct(B['review_share_for_half_of_events']['own_scorecard'], 0)],
+           ['抓到一半困境事件所需复核比例', pct(half['graph'], 0), pct(half['no_graph'], 0), pct(half['own_scorecard'], 0)],
            ['困境企业在事发前被列入前5%名单的比例', pct(B['lead_time']['graph']['firms_flagged_share']), pct(B['lead_time']['no_graph']['firms_flagged_share']), pct(B['lead_time']['own_scorecard']['firms_flagged_share'])],
            ['其中提前6个月以上预警的比例', pct(B['lead_time']['graph']['flagged_6m_or_earlier_share']), pct(B['lead_time']['no_graph']['flagged_6m_or_earlier_share']), pct(B['lead_time']['own_scorecard']['flagged_6m_or_earlier_share'])]],
           [215, 95, 90, 95], highlight=0)
     para(f"预警提前期：被预警的困境企业进入名单的时间中位数约在事发前{B['lead_time']['graph']['median_lead_months_when_flagged']:.1f}个月，留出压降、追加担保与重组的时间窗口。"
-         f"图谱带来的是增量而非替代：{B['caught_only_with_graph']}家困境企业只有关联图谱模型能提前识别，而只有不用图谱的模型能识别的仅{B['caught_only_without_graph']}家。")
+         f"图谱带来的是增量而非替代：{B['caught_only_with_graph']}家困境企业只有关联图谱模型能提前识别，只有不用图谱的模型能识别的为{B['caught_only_without_graph']}家。")
 
     h('4.2 评分等级：可直接用于授信分层', 2)
-    card = S['scorecard']['grades']
-    figure(vbars([(f"{gr['grade']}级\n{gr['test_rows'] / sum(x['test_rows'] for x in card) * 100:.1f}%客户", gr['test_event_rate'], RED if gr['grade'] in 'ED' else (YELLOW if gr['grade'] == 'C' else AQUA)) for gr in card],
-                 '评分等级与测试期困境发生率（600分基准，分越高越安全；等级切点由训练期确定）', lambda v: f'{100 * v:.1f}%', height=140, max_value=0.27),
-           f"图9  等级区分度清晰且严格单调：E级困境率{pct(card[0]['test_event_rate'])}，A级仅{pct(card[4]['test_event_rate'], 2)}，相差约{card[0]['test_event_rate'] / card[4]['test_event_rate']:.0f}倍；D、E两级合计{pct((card[0]['test_rows'] + card[1]['test_rows']) / sum(x['test_rows'] for x in card))}的客户覆盖了{pct((card[0]['test_events'] + card[1]['test_events']) / sum(x['test_events'] for x in card))}的困境事件。")
+    card = S['scorecard']['grades']; rows_all = sum(x['test_rows'] for x in card); ev_all = sum(x['test_events'] for x in card)
+    figure(vbars([(f"{gr['grade']}级\n{gr['test_rows'] / rows_all * 100:.1f}%客户", gr['test_event_rate'], RED if gr['grade'] in 'ED' else (YELLOW if gr['grade'] == 'C' else AQUA)) for gr in card],
+                 '评分等级与测试期困境发生率（600分基准，分越高越安全；等级切点由训练期确定）', lambda v: f'{100 * v:.1f}%', height=140, max_value=0.15),
+           f"图10  等级区分度清晰且严格单调：E级困境率{pct(card[0]['test_event_rate'])}，A级仅{pct(card[4]['test_event_rate'], 2)}，相差约{card[0]['test_event_rate'] / card[4]['test_event_rate']:.0f}倍；"
+           f"D、E两级合计{pct((card[0]['test_rows'] + card[1]['test_rows']) / rows_all)}的客户覆盖了{pct((card[0]['test_events'] + card[1]['test_events']) / ev_all)}的困境事件。")
 
     h('4.3 可解释性：说清风险从哪里来', 2)
     if B.get('case'):
-        figure(ego_case(B['case']), '图10  传导路径案例（真实测试样本，已匿名）：客户自身报表未见明显异常，但多个关联方同时出现股价暴跌、延迟披露与困境，模型提前将其列为最高风险等级。')
-    at = S['relation_attribution_top5pct']
-    para(f"对每季度前5%的高风险客户，逐类移除关联关系观察风险分变化，可定位风险来源——{pct(at['dominant_relation_share']['people'])}的高风险客户主要风险来自人员关联（共享董事/高管，常对应同一集团或实控人），"
-         f"{pct(at['dominant_relation_share']['supplier'])}主要来自供应商，{pct(at['dominant_relation_share']['investor'])}来自共同大股东；对{pct(at['share_where_relations_explain_over_half'])}的高风险客户，关联关系贡献了一半以上的风险分。")
+        figure(ego_case(B['case']), f"图11  传导路径示例（真实测试样本，已匿名；选自“图谱模型列入前5%、不用图谱时排在同季前25%以外”的{B['case']['candidates']}家困境企业）："
+                                    "客户自身报表风险不突出，但多个共享董事/高管的关联企业股价一年内大幅下跌，模型提前将其列入复核名单。")
+    at = S['relation_attribution_top5pct']; ds = at['dominant_relation_share']
+    para(f"对每季度前5%的高风险客户，逐类移除关联关系观察风险分变化，可定位风险来源——{pct(ds['people'])}的高风险客户主要风险来自人员关联（共享董事/高管，常对应同一集团或实控人），"
+         f"{pct(ds['investor'])}来自共同大股东，{pct(ds['supplier'] + ds['customer'])}来自上下游；对{pct(at['share_where_relations_explain_over_half'])}的高风险客户，关联关系贡献了一半以上的风险分。")
 
     h('4.4 业务价值：以实测债务衡量', 2)
-    para(f"把每季度前5%名单中“事后确实陷入困境”的企业找出来，按企业去重，取其首次进入名单那个季度、观察时点已披露的有息债务"
-         f"（短期+长期借款，Compustat 时点财务）。这是企业对全部债权人的总债务，不是单家银行的敞口；样本为北美上市企业。")
-    table(['实测业务价值（测试期合计）', '数值', '口径'],
-          [['提前识别的困境企业债务', f"图谱 {yi(dm['graph']['debt_total_nominal_m'])}（{dm['graph']['firms']}家）；评分卡 {yi(dm['own_scorecard']['debt_total_nominal_m'])}（{dm['own_scorecard']['firms']}家）",
-            '实测：Compustat 债务余额，按企业首次入单季度'],
-           ['按金额计的抓获率', f"{pct(dm['graph']['capture_by_amount'])} 对 {pct(dm['own_scorecard']['capture_by_amount'])}",
-            f"实测：分母为全部困境企业债务{yi(D['all_distressed']['debt_total_nominal_m'])}"],
-           ['比评分卡多识别的困境企业', f"{dm['graph']['firms'] - dm['own_scorecard']['firms']}家",
-            f"实测；企业重抽样95%区间{conc['graph_minus_model_firms_ci95']['own_scorecard'][0]:.0f}～{conc['graph_minus_model_firms_ci95']['own_scorecard'][1]:.0f}家"],
-           ['比评分卡多识别的债务', f"约{yi(debt_gap)}；剔除债务最大10家后约{yi(conc['graph_minus_model_excluding_largest10_m']['own_scorecard'])}",
-            f"实测；企业重抽样95%区间{ci(conc['graph_minus_model_ci95_m']['own_scorecard'])}（含0）"]],
-          [118, 177, 200], highlight=0,
-          note=f"口径限制：金额为企业对所有债权人的总有息债务（测试期合计，非年值），不是单家银行的敞口；样本为北美上市企业，与国内银行经营类客户的规模结构不同。"
-               f"困境企业债务高度集中：中位数仅约{conc['median_firm_debt_m']:.0f}百万美元，债务最大的10家占{pct(conc['largest10_share_of_all_distressed_debt'], 0)}，"
-               f"因此金额差额受个别大企业影响大，按家数计的优势更稳健。")
+    para("把每季度前5%名单中“事后确实陷入困境”的企业找出来，按企业去重，取其首次进入名单那个季度、观察时点已披露的有息债务"
+         "（短期+长期借款，Compustat 时点财务）。这是企业对全部债权人的总债务，不是单家银行的敞口；样本为北美上市企业。")
+    table(['实测业务价值（测试期合计）', '关联图谱模型', '不用图谱', '传统评分卡'],
+          [['提前识别的困境企业（家）', f"{dm['graph']['firms']}", f"{dm['no_graph']['firms']}", f"{dm['own_scorecard']['firms']}"],
+           ['其合计债务', yi(dm['graph']['debt_total_nominal_m']), yi(dm['no_graph']['debt_total_nominal_m']), yi(dm['own_scorecard']['debt_total_nominal_m'])],
+           ['按金额计的抓获率', pct(dm['graph']['capture_by_amount']), pct(dm['no_graph']['capture_by_amount']), pct(dm['own_scorecard']['capture_by_amount'])]],
+          [175, 105, 105, 110], highlight=0,
+          note=f"图谱模型比评分卡多识别{firms_gap}家困境企业（企业重抽样95%区间{firms_ci[0]:.0f}～{firms_ci[1]:.0f}家）；按金额计与评分卡相当"
+               f"（差{yi(D['graph_minus_model_m']['own_scorecard'])}，区间{ci(conc['graph_minus_model_ci95_m']['own_scorecard'])}），低于不用图谱的模型"
+               f"（差{yi(D['graph_minus_model_m']['no_graph'])}，区间{ci(conc['graph_minus_model_ci95_m']['no_graph'])}）。图谱多识别的主要是中小企业，"
+               f"困境企业债务高度集中（中位数约{conc['median_firm_debt_m']:.0f}百万美元，最大的10家占{pct(conc['largest10_share_of_all_distressed_debt'], 0)}），"
+               "少数大额困境企业靠自身报表已能识别。金额为企业对所有债权人的总有息债务（测试期合计，非年值）。")
     rnd = dm['random']
-    figure(vbars([(f"随机抽查5%\n（期望约{rnd['firms']:.0f}家）", rnd['debt_total_nominal_m'] / 100, '#b9c6d3'),
-                  (f"传统评分卡\n{dm['own_scorecard']['firms']}家", dm['own_scorecard']['debt_total_nominal_m'] / 100, AQUA),
-                  (f"不用图谱的模型\n{dm['no_graph']['firms']}家", dm['no_graph']['debt_total_nominal_m'] / 100, BLUE),
-                  (f"关联图谱模型\n{dm['graph']['firms']}家", dm['graph']['debt_total_nominal_m'] / 100, ORANGE)],
-                 '2021–2023年测试期：复核前5%名单提前识别的困境企业合计债务（亿美元，实测）', lambda v: f'{v:,.0f}', height=150, max_value=1200),
-           f"图11  口径：每季度按风险分复核前5%客户；困境企业按企业去重，取首次进入名单季度的债务 DLC+DLTT（观察时点可见的时点年度财务）；"
-           f"随机抽查为期望值。全部{D['all_distressed']['firms']}家困境企业合计约{yi(D['all_distressed']['debt_total_nominal_m'])}"
-           f"（其中{D['all_distressed']['firms_by_currency'].get('CAD', 0)}家以加元报表，占{pct(D['cad_share_of_all_distressed_debt'])}，未换算按名义值合并；"
-           f"{D['all_distressed']['firms_missing_debt']}家债务缺失未计入）。企业总债务，非单家银行敞口。")
+    figure(vbars([(f"随机抽查5%\n（期望约{rnd['firms']:.0f}家）", rnd['firms'], '#b9c6d3'),
+                  (f"传统评分卡", dm['own_scorecard']['firms'], AQUA), (f"不用图谱的模型", dm['no_graph']['firms'], BLUE),
+                  (f"关联图谱模型", dm['graph']['firms'], ORANGE)],
+                 '2021–2023年测试期：复核前5%名单提前识别的困境企业家数（按企业去重，实测）', lambda v: f'{v:,.0f}', height=140, max_value=220),
+           f"图12  口径：每季度按风险分复核前5%客户；困境企业按企业去重；随机抽查为期望值。全部困境企业{D['all_distressed']['firms']}家，"
+           f"合计债务约{yi(D['all_distressed']['debt_total_nominal_m'])}。")
 
-    # ---------------- 5 Product: how a bank uses it, what it is worth, how it goes live ----------------
+    # ---------------- 5 Product ----------------
     h('五、产品思路：关联风险雷达')
     h('5.1 痛点与定位', 2)
     para('产品定位：“关联风险雷达”——面向银行经营类客户的关联风险评分与预警系统。赛题指出经营类客户的风险易受上下游、股东、实控人等关联主体传导，'
-         '而银行对客户本身的数据较充分、对其关联方的动态却难以及时掌握。系统把关联方的风险变化自动传递到客户层面，嵌入贷前、贷中、贷后三个环节。')
+         '而银行对客户本身的数据较充分、对其关联方的动态却难以及时掌握。系统把关联方的风险变化自动传递到客户层面，作为行内报表评分之上的增量预警，嵌入贷前、贷中、贷后三个环节。')
     h('5.2 嵌入授信全流程', 2)
     table(['业务环节', '系统功能', '对应模型输出'],
           [['贷前准入与定价', '新客户进件时自动拉取其关联方网络，出具“自身+关联”综合评分与等级', 'A–E 等级；关联风险贡献占比'],
@@ -387,32 +419,42 @@ def main():
            ['组合管理', '识别同一高风险关联方牵连的客户群，防范“一点爆雷、多户受损”', '共同关联方聚类；集中度预警']],
           [80, 290, 125])
     h('5.3 投入产出估算', 2)
-    para('复核效率直接取自实测；损失规避则在4.4节的实测债务之上，叠加监管违约损失率与提前处置减损比例换算，其中减损比例为情景假设。')
-    lgd = B['assumptions']['lgd']['value']; scen = SL['graph_minus_own_scorecard_m']; scen40 = SL['graph_minus_own_scorecard_m_lgd40']
-    table(['投入产出（测试期合计）', '数值', '公式 / 参数来源'],
-          [['覆盖一半困境事件所需复核比例', f"{pct(half['graph'], 0)} 对 {pct(half['own_scorecard'], 0)}", f"实测；复核工作量减少约{pct(1 - half['graph'] / half['own_scorecard'], 0)}"],
-           ['违约损失率 LGD', pct(lgd, 0), '监管口径：巴塞尔协议内部评级法初级法下无抵押高级债权（巴塞尔III最终版对非金融企业为40%）'],
-           ['提前处置减损比例', '20% / 30% / 50%', '情景假设（无数据依据），银行应以自身处置效果替换'],
-           ['换算：比评分卡多规避的损失', f"约{yi(scen['30%'], 1)}（减损30%）",
-            f"多识别债务×LGD×减损比例；20%～50%为{yi(scen['20%'], 1)}～{yi(scen['50%'], 1)}；LGD取40%时{yi(scen40['20%'], 1)}～{yi(scen40['50%'], 1)}"]],
-          [118, 177, 200], highlight=3,
-          note='换算出的损失金额只是在实测债务上叠加监管LGD与情景减损比例的示意，不是单家银行的敞口或已实现收益。')
+    table(['投入产出（测试期实测）', '数值', '说明'],
+          [['覆盖一半困境事件所需复核比例', f"{pct(half['graph'], 0)} 对 {pct(half['own_scorecard'], 0)}", f"复核工作量较评分卡减少约{pct(1 - half['graph'] / half['own_scorecard'], 0)}"],
+           ['提前识别的困境企业', f"{dm['graph']['firms']} 对 {dm['own_scorecard']['firms']} 家", f"多{firms_gap}家（区间{firms_ci[0]:.0f}～{firms_ci[1]:.0f}家），以中小企业为主"],
+           ['按债务金额计', '与评分卡相当', '大额困境企业靠自身报表已能识别，不宜以金额口径换算损失规避'],
+           ['建议用法', '与行内评分卡并行', '评分卡管大额客户，关联雷达补足中小经营类客户的关联风险']],
+          [150, 120, 225], highlight=1)
     h('5.4 落地路径', 2)
-    para('推广建议：以行内工商股权、担保圈、对公结算识别的上下游与征信事件替换公开数据，按同一框架重建图谱，并以2024年以后数据做前瞻验证后分阶段上线。')
+    para('推广建议：以行内工商股权、担保圈、对公结算识别的上下游与征信事件替换公开数据，按同一框架重建图谱，并以2024年以后数据做前瞻验证后分阶段上线。'
+         '上线时保留非回溯约束；集团股权、担保与贷款关系是公开数据缺少、而最可能放大图谱价值的数据。')
 
-    # ---------------- 6 Conclusion: method -> contagion is real -> results -> where it applies ----------------
+    # ---------------- 6 Conclusion ----------------
     h('六、总结结论')
-    para(f"（1）构建了覆盖供应链、董事高管与大股东三类关系、携带涉诉/延迟披露/重述/破产等事件时序的企业关联图谱（{A['nodes']:,}个企业-季度节点），并提出面向非上市经营类客户的关系型max+mean图神经网络。")
-    para(f"（2）关联风险真实存在且可被利用：关联方已陷困境的客户困境率是无风险信号客户的{dr['关联方近一年发生困境'] / dr['有关联方但无上述信号']:.1f}倍；打乱关联关系后模型提升消失；人员（集团/实控人）与股东关联贡献最大，最危险关联方的信号最关键。")
-    para(f"（3）在严格的时间外测试中，模型AUC {main_run['roc_auc']:.3f}、KS {main_run['ks']:.3f}，困境识别AP约为随机水平的{main_run['ap'] / base:.0f}倍；每季度复核5%客户可提前覆盖{pct(g('graph', .05))}的困境事件，复核工作量较传统评分卡减少约{pct(1 - half['graph'] / half['own_scorecard'], 0)}；提前识别的困境企业多{dm['graph']['firms'] - dm['own_scorecard']['firms']}家，合计债务多约{yi(debt_gap)}。")
-    para('（4）关联图谱的价值取决于客户的信息透明度：对有股价的上市企业，关联风险已被市场定价；对信息不透明的经营类客户，关联图谱是识别潜在风险的关键输入——这与赛题的业务判断一致。')
+    para(f"（1）构建了覆盖供应链、董事高管与大股东三类关系、携带涉诉/延迟披露/重述/破产等事件时序的企业关联图谱（{A['nodes']:,}个企业-季度节点），并提出面向非上市经营类客户的非回溯 GraphSAGE 图神经网络。")
+    para(f"（2）关联风险真实存在：关联方已陷困境的客户困境率是无风险信号客户的{dr['关联方近一年发生困境'] / dr['有关联方但无上述信号']:.1f}倍；人员（集团/实控人）关联是高风险客户最主要的风险来源；"
+         f"关联方的市场信号是风险传导的主要载体（关联方只用报表信息时AUC由{sa('main_all_relations_full_neighbour_view')['roc_auc']:.3f}降至{sa('neighbour_view_unlisted_only')['roc_auc']:.3f}）。")
+    para(f"（3）在严格的时间外测试中，模型AUC {main_run['roc_auc']:.3f}、KS {main_run['ks']:.3f}，排序能力显著优于不用图谱的同特征模型；每季度复核5%客户可提前覆盖{pct(g('graph', .05))}的困境事件，"
+         f"复核工作量较传统评分卡减少约{pct(1 - half['graph'] / half['own_scorecard'], 0)}，多识别困境企业{firms_gap}家。")
+    para("（4）关联图谱的增益稳健但温和，且有一部分来自市场整体环境；多识别的困境企业以中小经营类客户为主。关联图谱更适合作为行内评分卡之上的增量预警，"
+         "其价值有望随行内股权、担保、贷款等关系数据的接入而放大。")
     story.append(PageMarker(pages, 'body_end'))
 
     def footer(canvas, doc):
-        canvas.setFont('ReportCJK', 7.5); canvas.setFillColor(colors.HexColor(MUTED)); canvas.drawRightString(A4[0] - 50, 22, f'{doc.page}')
+        # Paper-style running footer: hairline rule, code-availability note with a clickable link, page number.
+        left, right, y = 50, A4[0] - 50, 22
+        canvas.saveState()
+        canvas.setStrokeColor(colors.HexColor(GRID)); canvas.setLineWidth(0.5); canvas.line(left, y + 10, right, y + 10)
+        canvas.setFont('ReportCJK', 7); canvas.setFillColor(colors.HexColor(MUTED))
+        label = '代码与复现材料：'; canvas.drawString(left, y, label)
+        x = left + pdfmetrics.stringWidth(label, 'ReportCJK', 7)
+        canvas.setFillColor(colors.HexColor(BLUE)); canvas.drawString(x, y, REPO_URL)
+        canvas.linkURL(REPO_URL, (x, y - 2, x + pdfmetrics.stringWidth(REPO_URL, 'ReportCJK', 7), y + 7), relative=0)
+        canvas.setFillColor(colors.HexColor(MUTED)); canvas.setFont('ReportCJK', 7.5); canvas.drawRightString(right, y, f'{doc.page}')
+        canvas.restoreState()
     SimpleDocTemplate(str(PDF), pagesize=A4, leftMargin=50, rightMargin=50, topMargin=42, bottomMargin=40,
                       title='基于关联图谱的经营类客户风险预警模型').build(story, onFirstPage=footer, onLaterPages=footer)
-    MD.write_text(''.join(md))
+    MD.write_text(''.join(md) + f'---\n\n代码与复现材料：{REPO_URL}\n')
     print(json.dumps({'pdf': str(PDF), 'body_pages': pages.get('body_end'), 'within_limit': pages.get('body_end', 99) <= BODY_PAGE_LIMIT}, ensure_ascii=False))
     if pages.get('body_end', 99) > BODY_PAGE_LIMIT:
         raise SystemExit('Body exceeds page limit')

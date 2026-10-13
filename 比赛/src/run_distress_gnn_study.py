@@ -1,7 +1,7 @@
-"""Study of the relational max+mean GNN for unlisted business clients.
+"""Study of the report's main graph model, non-backtracking GraphSAGE (sage_gnn.py), for unlisted business clients.
 
 Main model: client sees only its own financial + event information; neighbours (listed counterparties) are encoded
-from their full information. Ablations (same seeds, budget and early stopping): one relation type at a time, and a
+from their full information, and no message returns a client's own view to it (non-backtracking). Ablations (same seeds, budget and early stopping): one relation type at a time, and a
 neighbour view restricted to the same unlisted information (tests whether counterparties' market signals carry the
 contagion). For the main model: score card on training-score quantiles, top-k capture, and relation attribution by
 removing one relation type at inference for the highest-risk test clients.
@@ -16,6 +16,8 @@ from audit_rating_history import ROOT
 from build_distress_panel import EVENT_NAMES, FEATURE_NAMES, FIN_NAMES, MARKET_NAMES, RATING_NAMES
 from experiment_metrics import paired_cluster_bootstrap
 from run_distress_models import RELATIONS, metrics, neighbours, preprocess, split_of, train_gnn
+
+MAIN_KIND = 'sage_nb'
 
 
 def subset(rel, keep):
@@ -39,10 +41,10 @@ def main():
                 'people_only': (subset(rel, {'people'}), Z_full),
                 'investor_only': (subset(rel, {'investor'}), Z_full),
                 'neighbour_view_unlisted_only': (rel, None)}
-    report = {'created_at': datetime.now(timezone.utc).isoformat(), 'config': config, 'runs': {}, 'comparisons': {}}
+    report = {'created_at': datetime.now(timezone.utc).isoformat(), 'config': config, 'main_model': MAIN_KIND, 'runs': {}, 'comparisons': {}}
     preds, models = {}, []
     for name, (edges, view) in variants.items():
-        outs = [train_gnn(Z, panel, edges, split, y, sup, 'gnn_maxmean', s, config, view, return_model=(name.startswith('main'))) for s in config['seeds']]
+        outs = [train_gnn(Z, panel, edges, split, y, sup, MAIN_KIND, s, config, view, return_model=(name.startswith('main'))) for s in config['seeds']]
         preds[name] = np.mean([o[0] for o in outs], axis=0)
         if name.startswith('main'):
             models = [(o[2], o[3]) for o in outs]

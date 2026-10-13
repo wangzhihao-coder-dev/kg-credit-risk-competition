@@ -23,13 +23,16 @@ def evaluate(y,p,k=50):
 def paired_cluster_bootstrap(y,p_new,p_base,groups,repeats=300,seed=20261008):
     y=np.asarray(y);p_new=np.asarray(p_new);p_base=np.asarray(p_base);groups=np.asarray(groups)
     unique=np.unique(groups);members=[np.flatnonzero(groups==g) for g in unique]
-    rng=np.random.default_rng(seed);differences=[]
+    rng=np.random.default_rng(seed);differences=[];auc_differences=[]
     for _ in range(repeats):
         ids=np.concatenate([members[i] for i in rng.integers(0,len(members),size=len(members))])
         if len(np.unique(y[ids]))<2:continue
         differences.append(average_precision_score(y[ids],p_new[ids])-average_precision_score(y[ids],p_base[ids]))
+        auc_differences.append(roc_auc_score(y[ids],p_new[ids])-roc_auc_score(y[ids],p_base[ids]))  # same draws, no extra randomness
     if not differences:raise ValueError('No two-class bootstrap draws')
     return {'ap_difference':float(average_precision_score(y,p_new)-average_precision_score(y,p_base)),
             'ap_difference_ci95':[float(x) for x in np.quantile(differences,[.025,.975])],
+            'auc_difference':float(roc_auc_score(y,p_new)-roc_auc_score(y,p_base)),
+            'auc_difference_ci95':[float(x) for x in np.quantile(auc_differences,[.025,.975])],
             'clusters':len(unique),'largest_cluster':int(max(len(x) for x in members)),
             'successful_draws':len(differences),'method':'paired graph-component resampling; retrospective sample only'}

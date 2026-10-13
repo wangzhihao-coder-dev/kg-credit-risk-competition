@@ -29,9 +29,10 @@
   },
   "gnn_models": [
     "mlp",
-    "gnn_mean",
     "gnn_maxmean",
-    "gnn_maxmean_rewired"
+    "gnn_maxmean_nb",
+    "sage_nb",
+    "sage_nb_rewired"
   ],
   "hidden": 32,
   "learning_rate": 0.005,
@@ -41,5 +42,6 @@
   "output": "distress_distress_unlisted_results.json",
   "frozen_before_test": "2026-10-09; hyperparameters fixed a priori, selection by validation AP only",
   "own_info": "unlisted",
-  "scenario": "Unlisted business client: own financial + event information only; listed counterparties contribute full-information risk"
+  "scenario": "Unlisted business client: own financial + event information only; listed counterparties contribute full-information risk",
+  "notes": "Unlisted-client view: graph models are scored non-backtracking, so a client's own full-information view (market price, rating) never returns to it through client -> counterparty -> client. Main model: non-backtracking GraphSAGE (sage_nb). gnn_maxmean is the two-layer relational max+mean GNN without that guard, kept to measure the echo it reads (gnn_maxmean_nb_inference: the same weights scored non-backtracking; gnn_maxmean_nb: trained non-backtracking). Hyperparameters were fixed before the test period was examined."
 }

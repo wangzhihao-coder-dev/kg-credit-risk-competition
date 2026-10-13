@@ -23,6 +23,7 @@ from torch import nn
 from audit_rating_history import ROOT
 from build_distress_panel import EVENT_NAMES, FEATURE_NAMES, FIN_NAMES, MARKET_NAMES, RATING_NAMES
 from distress_gnn import RelationalRiskGNN
+from sage_gnn import NonBacktrackingSAGE
 from experiment_metrics import evaluate, paired_cluster_bootstrap
 from run_global_contagion import ks_statistic
 
@@ -90,7 +91,9 @@ def previous_quarter_delta(panel, score):
     return delta
 
 
-def contagion_features(rel, score, high, signals, delta):
+def contagion_features(rel, score, high, signals, delta, exclude_self=False):
+    """exclude_self (unlisted-client view): the 2- and 3-step diffusion features drop the walks that end at the client
+    itself, i.e. (P^k)_ii times its own value, so its own full-information score never feeds back into its own features."""
     n = len(score); out = []
     for r in RELATIONS:
         e = rel[r]; src, dst = e[:, 0], e[:, 1]
@@ -119,6 +122,9 @@ def contagion_features(rel, score, high, signals, delta):
     deg = np.asarray(A.sum(1)).ravel(); P = sparse.diags(1 / np.maximum(deg, 1)) @ A
     centred = score - np.nanmean(score); d1 = P @ centred; d2 = P @ d1; d3 = P @ d2
     e1 = P @ signals[0].astype(float); e2 = P @ e1
+    if exclude_self:  # one-step features need no correction: the graph has no self loops
+        PT = P.T.tocsr(); back2 = np.asarray(P.multiply(PT).sum(1)).ravel(); back3 = np.asarray((P @ P).multiply(PT).sum(1)).ravel()
+        d2 = d2 - back2 * centred; d3 = d3 - back3 * centred; e2 = e2 - back2 * signals[0].astype(float)
     has = deg > 0
     out += [np.where(has, d1, np.nan), np.where(has, d2, np.nan), np.where(has, d3, np.nan), np.where(has, e1, np.nan), np.where(has, e2, np.nan)]
     return np.column_stack(out)
@@ -147,8 +153,13 @@ def train_gnn(Z, panel, rel_edges, split, y, sup, kind, seed, config, Z_neighbou
         target = sup[nodes]
         blocks[s] = (torch.from_numpy(Z[nodes]), torch.from_numpy(local[e]), torch.from_numpy(r), torch.from_numpy(np.flatnonzero(target)),
                      torch.tensor(y[nodes][target], dtype=torch.float32), torch.from_numpy(Z_neighbour[nodes]) if Z_neighbour is not None else None)
-    aggregation = 'none' if kind == 'mlp' else ('mean' if kind.startswith('gnn_mean') else 'maxmean')
-    model = RelationalRiskGNN(Z.shape[1], config['hidden'], len(RELATIONS), aggregation, neighbour_dim=Z_neighbour.shape[1] if Z_neighbour is not None else None)
+    neighbour_dim = Z_neighbour.shape[1] if Z_neighbour is not None else None
+    if kind.startswith('sage_nb'):  # main model: non-backtracking GraphSAGE (sage_gnn.py)
+        model = NonBacktrackingSAGE(Z.shape[1], config['hidden'], neighbour_dim=neighbour_dim)
+    else:
+        aggregation = 'none' if kind == 'mlp' else ('mean' if kind.startswith('gnn_mean') else 'maxmean')
+        model = RelationalRiskGNN(Z.shape[1], config['hidden'], len(RELATIONS), aggregation, neighbour_dim=neighbour_dim,
+                                  non_backtracking=kind.startswith('gnn_maxmean_nb'))
     x, e, r, idx, target, xn = blocks['train']
     pos_weight = torch.tensor(math.sqrt((len(target) - target.sum().item()) / max(target.sum().item(), 1)))
     optimizer = torch.optim.Adam(model.parameters(), lr=config['learning_rate'], weight_decay=config['weight_decay'])
@@ -167,8 +178,9 @@ def train_gnn(Z, panel, rel_edges, split, y, sup, kind, seed, config, Z_neighbou
     with torch.no_grad():
         for s, (bx, be, br, _, _, bn) in blocks.items():
             pred[np.flatnonzero(split == s)] = torch.sigmoid(model(bx, be, br, bn)).numpy()
-    gates = torch.sigmoid(model.gates).detach().numpy().round(3).tolist()
-    details = {'best_epoch': best_epoch, 'validation_ap': best, 'gates': gates}
+    details = {'best_epoch': best_epoch, 'validation_ap': best}
+    if hasattr(model, 'gates'):
+        details['gates'] = torch.sigmoid(model.gates).detach().numpy().round(3).tolist()
     return (pred, details, model, blocks) if return_model else (pred, details)
 
 
@@ -227,8 +239,9 @@ def main():
     crash = (np.nan_to_num(X[:, FEATURE_NAMES.index('ret_12m')], nan=0) < -0.5).astype(float)
     signals = [panel['recent_distress'].astype(float), late, crash]
     delta = previous_quarter_delta(panel, score)
-    real = contagion_features(neighbours(panel), score, high, signals, delta)
-    control = contagion_features(neighbours(panel, randomized_seed=config['control_seed']), score, high, signals, delta)
+    unlisted = own_key == 'own_unlisted'
+    real = contagion_features(neighbours(panel), score, high, signals, delta, exclude_self=unlisted)
+    control = contagion_features(neighbours(panel, randomized_seed=config['control_seed']), score, high, signals, delta, exclude_self=unlisted)
     report['relation_coverage_test'] = {r: float((real[sup & (split == 'test'), CONTAGION_NAMES.index(f'{r}_n')] > 0).mean()) for r in RELATIONS}
 
     # Stage 2: own features + own score + contagion block (and ablations).
@@ -272,8 +285,20 @@ def main():
     Z = preprocess(X[:, feature_sets[own_key]], train_sup, config['clip_quantiles']); rel = neighbours(panel)
     Z_neighbour = preprocess(X[:, feature_sets['own_full']], train_sup, config['clip_quantiles']) if own_key != 'own_full' else None
     for kind in config['gnn_models']:
-        runs = [train_gnn(Z, panel, rel, split, y, sup, kind, s, config, Z_neighbour) for s in config['seeds']]
-        record(kind, np.mean([p for p, _ in runs], axis=0), {'seed_runs': [d for _, d in runs]})
+        diagnose = kind == 'gnn_maxmean' and own_key == 'own_unlisted'
+        runs = [train_gnn(Z, panel, rel, split, y, sup, kind, s, config, Z_neighbour, return_model=diagnose) for s in config['seeds']]
+        record(kind, np.mean([o[0] for o in runs], axis=0), {'seed_runs': [o[1] for o in runs]})
+        if diagnose:
+            # Echo check: the same trained weights, scored without the i -> j -> i path that returns a client's own
+            # full-information view (market price, rating) to it. The drop is what that path contributed.
+            nb_preds = []
+            for _, _, model, blocks in runs:
+                model.non_backtracking = True; model.eval(); p_nb = np.full(len(Z), np.nan)
+                with torch.no_grad():
+                    for s_name, (bx, be, br, _, _, bn) in blocks.items():
+                        p_nb[np.flatnonzero(split == s_name)] = torch.sigmoid(model(bx, be, br, bn)).numpy()
+                nb_preds.append(p_nb)
+            record('gnn_maxmean_nb_inference', np.mean(nb_preds, axis=0))
 
     test = sup & (split == 'test'); g = groups[test]
     pairs = [('gbdt_own_financial_market', 'gbdt_own_financial'), ('gbdt_own_full', 'gbdt_own_financial_market'),
@@ -283,6 +308,8 @@ def main():
              ('two_stage_investor_only', 'two_stage_no_contagion'), ('two_stage_diffusion_only', 'two_stage_no_contagion'),
              ('two_stage_customer_dependence_only', 'two_stage_no_contagion')]
     pairs += [(k, 'mlp') for k in config['gnn_models'] if k != 'mlp'] + [('gnn_maxmean', 'gnn_mean'), ('gnn_maxmean', 'gnn_maxmean_rewired')]
+    pairs += [('gnn_maxmean', 'gnn_maxmean_nb_inference'), ('sage_nb', f'gbdt_{own_key}'), ('sage_nb', 'gnn_maxmean_nb'),
+              ('sage_nb', 'sage_nb_rewired'), ('sage_nb', 'two_stage_contagion'), ('mlp', f'gbdt_{own_key}')]
     for a, b in pairs:
         if a in preds and b in preds:
             report['comparisons'][f'{a}_vs_{b}'] = paired_cluster_bootstrap(y[test], preds[a][test], preds[b][test], g, config['bootstrap_draws'])
@@ -293,6 +320,8 @@ def main():
     if own_key == 'own_unlisted':
         # An unlisted client has no own market price or rating: models built on those inputs are reference rows only.
         candidates = [k for k in candidates if k not in ('gbdt_own_financial_market', 'gbdt_own_full')]
+        # The plain two-layer max+mean model reads the client's own market signal back through i -> j -> i (echo).
+        candidates = [k for k in candidates if k not in ('gnn_maxmean', 'gnn_maxmean_nb_inference')]
     report['selection_candidates'] = candidates
     selected = max(candidates, key=lambda k: report['runs'][k]['validation']['ap'])
     report['selected_by_validation'] = selected
